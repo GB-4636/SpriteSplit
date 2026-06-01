@@ -4,26 +4,17 @@
     "minArea": 16,
     "sortMode": "top-to-bottom-left-to-right"
   },
-  "exportSettings": {
-    "outputDir": "\\Users\\gb\\Desktop\\spritesplit-export",
-    "exportCrops": true,
-    "normalizeCanvas": false,
-    "canvasWidth": 256,
-    "canvasHeight": 256,
-    "includeJson": true,
-    "includeCsv": true
-  },
   "imageSize": {
     "height": 1024,
     "width": 1024
   },
-  "prompt": "",
-  "sheetContext": "",
+  "prompt": "Create a transparent PNG sprite sheet containing 12 decorative background props for a mobile board game called \"GanGai\".\n\nArrange them in a clean 4 columns x 3 rows grid.\n\nProps:\n1. bamboo basket\n2. small pile of mushrooms\n3. corner of a paper umbrella\n4. wooden table texture patch\n5. hanging chili string\n6. Pu'er tea cake\n7. ethnic pattern corner ornament A\n8. ethnic pattern corner ornament B\n9. small market cloth\n10. distant Yunnan mountain silhouette\n11. rice noodle bowl\n12. tea horse road bell\n\nStyle:\nwarm hand-painted Yunnan street market board game decoration, subtle, not too detailed, suitable for UI background decoration.\n\nImportant:\n- Transparent background.\n- No text.\n- No numbers.\n- Each prop centered in equal cells.\n- Props should not be too visually heavy.\n- Suitable for layering behind UI.",
+  "sheetContext": "This sprite sheet, titled \"GanGai,\" is a warm, hand-painted set of 12 decorative background props (with an extra rice noodle bowl variant, making 13 total) designed for a mobile board game's UI. The style is soft and illustrative, with subtle detailing perfect for layering behind game interfaces. The subject matter is distinctly Yunnan-inspired, featuring market and cultural items like bamboo baskets, chili strings, Pu'er tea cakes, rice noodle bowls, and a tea horse road bell. Repeated motifs include ethnic geometric patterns (seen in the two corner ornaments), wooden and woven textures, and a color palette of warm earth tones, reds, and greens that evoke a rustic, regional charm.",
   "sourceImageName": "image.png",
   "sourceImagePath": "/Users/gb/Desktop/image.png",
   "sprites": [
     {
-      "aiDescription": "",
+      "aiDescription": "A woven bamboo basket with a thick, reinforced rim, depicted from a slightly elevated angle.",
       "area": 26496,
       "bbox": {
         "height": 138,
@@ -35,16 +26,16 @@
         "x": 166,
         "y": 156
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/001_sprite_001.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A woven bamboo basket with a thick, reinforced rim, depicted from a slightly elevated angle.",
       "group": "",
       "id": "sprite-001",
       "index": 1,
-      "name": "sprite_001",
+      "name": "bamboo_basket",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A red and yellow paper umbrella prop.",
       "area": 21976,
       "bbox": {
         "height": 134,
@@ -56,16 +47,16 @@
         "x": 631,
         "y": 156
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/002_sprite_002.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A red and yellow paper umbrella prop.",
       "group": "",
       "id": "sprite-002",
       "index": 2,
-      "name": "sprite_002",
+      "name": "red_paper_umbrella",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A subtle hand-painted wooden table texture in warm earth tones, suitable for background layering.",
       "area": 18690,
       "bbox": {
         "height": 105,
@@ -77,16 +68,16 @@
         "x": 858,
         "y": 159.5
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/003_sprite_003.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A subtle hand-painted wooden table texture in warm earth tones, suitable for background layering.",
       "group": "",
       "id": "sprite-003",
       "index": 3,
-      "name": "sprite_003",
+      "name": "wooden_table_texture_patch",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "Subtle hand-painted rice noodle bowl with warm earth tones, suitable for UI background decoration.",
       "area": 17680,
       "bbox": {
         "height": 104,
@@ -98,16 +89,16 @@
         "x": 404,
         "y": 160
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/004_sprite_004.png",
-      "description": "",
+      "cropPath": "",
+      "description": "Subtle hand-painted rice noodle bowl with warm earth tones, suitable for UI background decoration.",
       "group": "",
       "id": "sprite-004",
       "index": 4,
-      "name": "sprite_004",
+      "name": "rice_noodle_bowl",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A hand-painted cluster of red chili peppers hanging vertically.",
       "area": 17190,
       "bbox": {
         "height": 191,
@@ -119,16 +110,16 @@
         "x": 170,
         "y": 395.5
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/005_sprite_005.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A hand-painted cluster of red chili peppers hanging vertically.",
       "group": "",
       "id": "sprite-005",
       "index": 5,
-      "name": "sprite_005",
+      "name": "hanging_chili_string",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A round, hand-painted Pu'er tea cake with dark brown edges and a golden-yellow center, styled as a warm decorative prop.",
       "area": 25872,
       "bbox": {
         "height": 154,
@@ -140,16 +131,16 @@
         "x": 402,
         "y": 405
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/006_sprite_006.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A round, hand-painted Pu'er tea cake with dark brown edges and a golden-yellow center, styled as a warm decorative prop.",
       "group": "",
       "id": "sprite-006",
       "index": 6,
-      "name": "sprite_006",
+      "name": "puer_tea_cake",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "Hand-painted ethnic geometric pattern corner in warm Yunnan-inspired earth tones.",
       "area": 19460,
       "bbox": {
         "height": 139,
@@ -161,16 +152,16 @@
         "x": 621,
         "y": 401.5
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/007_sprite_007.png",
-      "description": "",
+      "cropPath": "",
+      "description": "Hand-painted ethnic geometric pattern corner in warm Yunnan-inspired earth tones.",
       "group": "",
       "id": "sprite-007",
       "index": 7,
-      "name": "sprite_007",
+      "name": "ethnic_corner_ornament_a",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A decorative corner ornament with warm-toned geometric ethnic patterns.",
       "area": 19600,
       "bbox": {
         "height": 140,
@@ -182,16 +173,16 @@
         "x": 842,
         "y": 402
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/008_sprite_008.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A decorative corner ornament with warm-toned geometric ethnic patterns.",
       "group": "",
       "id": "sprite-008",
       "index": 8,
-      "name": "sprite_008",
+      "name": "ethnic_pattern_corner",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "rustic brass bell with wooden handle and red knot",
       "area": 29756,
       "bbox": {
         "height": 173,
@@ -203,16 +194,16 @@
         "x": 857,
         "y": 663.5
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/009_sprite_009.png",
-      "description": "",
+      "cropPath": "",
+      "description": "rustic brass bell with wooden handle and red knot",
       "group": "",
       "id": "sprite-009",
       "index": 9,
-      "name": "sprite_009",
+      "name": "tea_horse_road_bell",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "a warm-toned, striped market cloth with tassels in red, green, and beige.",
       "area": 25392,
       "bbox": {
         "height": 138,
@@ -224,16 +215,16 @@
         "x": 170,
         "y": 661
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/010_sprite_010.png",
-      "description": "",
+      "cropPath": "",
+      "description": "a warm-toned, striped market cloth with tassels in red, green, and beige.",
       "group": "",
       "id": "sprite-010",
       "index": 10,
-      "name": "sprite_010",
+      "name": "small_market_cloth",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A misty, hand-painted silhouette of distant Yunnan mountains with warm earth-tone gradients, designed as a subtle background prop.",
       "area": 44308,
       "bbox": {
         "height": 106,
@@ -245,16 +236,16 @@
         "x": 513,
         "y": 672
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/011_sprite_011.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A misty, hand-painted silhouette of distant Yunnan mountains with warm earth-tone gradients, designed as a subtle background prop.",
       "group": "",
       "id": "sprite-011",
       "index": 11,
-      "name": "sprite_011",
+      "name": "distant_yunnan_mountains",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "A warm, hand-painted bowl of rice noodles with chopsticks, greens, and an egg, in a soft Yunnan-inspired style.",
       "area": 28459,
       "bbox": {
         "height": 149,
@@ -266,16 +257,16 @@
         "x": 634.5,
         "y": 871.5
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/012_sprite_012.png",
-      "description": "",
+      "cropPath": "",
+      "description": "A warm, hand-painted bowl of rice noodles with chopsticks, greens, and an egg, in a soft Yunnan-inspired style.",
       "group": "",
       "id": "sprite-012",
       "index": 12,
-      "name": "sprite_012",
+      "name": "yunnan_rice_noodle_bowl",
       "tags": []
     },
     {
-      "aiDescription": "",
+      "aiDescription": "Subtle hand-painted Yunnan-style striped bowl with rice noodles and colorful garnishes, designed as a decorative UI background prop.",
       "area": 21480,
       "bbox": {
         "height": 120,
@@ -287,14 +278,23 @@
         "x": 331.5,
         "y": 883
       },
-      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/013_sprite_013.png",
-      "description": "",
+      "cropPath": "",
+      "description": "Subtle hand-painted Yunnan-style striped bowl with rice noodles and colorful garnishes, designed as a decorative UI background prop.",
       "group": "",
       "id": "sprite-013",
       "index": 13,
-      "name": "sprite_013",
+      "name": "rice_noodle_bowl_2",
       "tags": []
     }
   ],
-  "warnings": []
+  "warnings": [],
+  "exportSettings": {
+    "outputDir": "\\Users\\gb\\Desktop\\spritesplit-export",
+    "exportCrops": false,
+    "normalizeCanvas": false,
+    "canvasWidth": 256,
+    "canvasHeight": 256,
+    "includeJson": true,
+    "includeCsv": true
+  }
 }

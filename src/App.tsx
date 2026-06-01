@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { CSSProperties } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -54,6 +55,14 @@ type BusyState = '' | 'analyzing' | 'rerunning' | 'describing' | 'exporting'
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 4
 const ZOOM_STEP = 0.05
+const LEFT_RAIL_STORAGE_KEY = 'spritesplit-left-rail-width'
+const RIGHT_RAIL_STORAGE_KEY = 'spritesplit-right-rail-width'
+const LEFT_RAIL_DEFAULT = 204
+const RIGHT_RAIL_DEFAULT = 360
+const LEFT_RAIL_MIN = 170
+const LEFT_RAIL_MAX = 360
+const RIGHT_RAIL_MIN = 300
+const RIGHT_RAIL_MAX = 560
 
 type StatusState =
   | { key: 'idle' }
@@ -369,6 +378,14 @@ function getStoredLanguage(): Language {
   return stored === 'zh' ? 'zh' : 'en'
 }
 
+function getStoredWidth(key: string, fallback: number, min: number, max: number) {
+  if (typeof window === 'undefined') {
+    return fallback
+  }
+  const stored = Number(window.localStorage.getItem(key))
+  return Number.isFinite(stored) ? clampNumber(stored, min, max) : fallback
+}
+
 function App() {
   const [language, setLanguage] = useState<Language>(getStoredLanguage)
   const [project, setProject] = useState<ProjectDocument | null>(null)
@@ -390,6 +407,22 @@ function App() {
   const [error, setError] = useState('')
   const [busyState, setBusyState] = useState<BusyState>('')
   const [fitRequestKey, setFitRequestKey] = useState(0)
+  const [leftRailWidth, setLeftRailWidth] = useState(() =>
+    getStoredWidth(
+      LEFT_RAIL_STORAGE_KEY,
+      LEFT_RAIL_DEFAULT,
+      LEFT_RAIL_MIN,
+      LEFT_RAIL_MAX,
+    ),
+  )
+  const [rightRailWidth, setRightRailWidth] = useState(() =>
+    getStoredWidth(
+      RIGHT_RAIL_STORAGE_KEY,
+      RIGHT_RAIL_DEFAULT,
+      RIGHT_RAIL_MIN,
+      RIGHT_RAIL_MAX,
+    ),
+  )
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const stageFrameRef = useRef<HTMLDivElement | null>(null)
@@ -425,6 +458,44 @@ function App() {
     }
     setZoom(calculateFitZoom(current.imageSize.width, current.imageSize.height, frame))
   }, [])
+
+  const beginSidebarResize = (
+    side: 'left' | 'right',
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = side === 'left' ? leftRailWidth : rightRailWidth
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - startX
+      const nextWidth =
+        side === 'left' ? startWidth + delta : startWidth - delta
+      if (side === 'left') {
+        setLeftRailWidth(clampNumber(nextWidth, LEFT_RAIL_MIN, LEFT_RAIL_MAX))
+      } else {
+        setRightRailWidth(clampNumber(nextWidth, RIGHT_RAIL_MIN, RIGHT_RAIL_MAX))
+      }
+    }
+
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      document.body.classList.remove('is-resizing-sidebar')
+    }
+
+    document.body.classList.add('is-resizing-sidebar')
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp, { once: true })
+  }
+
+  useEffect(() => {
+    window.localStorage.setItem(LEFT_RAIL_STORAGE_KEY, String(leftRailWidth))
+  }, [leftRailWidth])
+
+  useEffect(() => {
+    window.localStorage.setItem(RIGHT_RAIL_STORAGE_KEY, String(rightRailWidth))
+  }, [rightRailWidth])
 
   const updateZoom = (nextZoom: number) => {
     setZoom(clampZoom(nextZoom))
@@ -774,7 +845,7 @@ function App() {
   }
 
   const beginDragSelection = (
-    event: React.PointerEvent<HTMLButtonElement>,
+    event: React.PointerEvent<HTMLElement>,
     spriteId: string,
   ) => {
     event.stopPropagation()
@@ -988,7 +1059,13 @@ function App() {
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <main className="app-main">
+      <main
+        className="app-main"
+        style={{
+          '--left-rail-width': `${leftRailWidth}px`,
+          '--right-rail-width': `${rightRailWidth}px`,
+        } as CSSProperties}
+      >
         <ToolRail
           deleteSelection={deleteSelection}
           fitStageToViewport={fitStageToViewport}
@@ -1004,6 +1081,14 @@ function App() {
           zoomIn={zoomIn}
           zoomOut={zoomOut}
           zoom={zoom}
+        />
+
+        <div
+          aria-label="Resize left toolbar"
+          className="sidebar-resizer"
+          onPointerDown={(event) => beginSidebarResize('left', event)}
+          role="separator"
+          tabIndex={0}
         />
 
         <StageWorkspace
@@ -1025,6 +1110,14 @@ function App() {
           tool={tool}
           ui={ui}
           zoom={zoom}
+        />
+
+        <div
+          aria-label="Resize inspector panel"
+          className="sidebar-resizer"
+          onPointerDown={(event) => beginSidebarResize('right', event)}
+          role="separator"
+          tabIndex={0}
         />
 
         <InspectorPanel
@@ -1459,7 +1552,7 @@ function StageWorkspace({
   zoom,
 }: {
   beginDragSelection: (
-    event: React.PointerEvent<HTMLButtonElement>,
+    event: React.PointerEvent<HTMLElement>,
     spriteId: string,
   ) => void
   beginMove: (spriteId: string, additive: boolean) => void
@@ -1517,7 +1610,7 @@ function StageWorkspace({
             {project.sprites.map((sprite) => {
               const selected = selectedIds.includes(sprite.id)
               return (
-                <button
+                <div
                   key={sprite.id}
                   className={`sprite-box ${selected ? 'selected' : ''}`}
                   onPointerDown={(event) => beginDragSelection(event, sprite.id)}
@@ -1531,7 +1624,8 @@ function StageWorkspace({
                     width: sprite.bbox.width * zoom,
                     height: sprite.bbox.height * zoom,
                   }}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                 >
                   <span className="sprite-index">{sprite.index}</span>
                   {selected ? (
@@ -1562,7 +1656,7 @@ function StageWorkspace({
                       />
                     </>
                   ) : null}
-                </button>
+                </div>
               )
             })}
           </div>

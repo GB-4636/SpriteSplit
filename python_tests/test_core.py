@@ -84,14 +84,14 @@ class SpriteSplitCoreTests(unittest.TestCase):
                 }
             )
 
-            metadata = [
-                {"name": "Red Fire Orb", "description": "A small red fire orb."},
-                {"name": "green_slime_idle", "description": "A green slime idle frame."},
-            ]
+            metadata = {
+                "sprite-001": {"name": "Red Fire Orb", "description": "A small red fire orb."},
+                "sprite-002": {"name": "green_slime_idle", "description": "A green slime idle frame."},
+            }
 
             with (
                 patch.object(OpenAICompatibleProvider, "describe_sheet_context", return_value="pixel fantasy items"),
-                patch.object(OpenAICompatibleProvider, "describe_sprite_metadata", side_effect=metadata),
+                patch.object(OpenAICompatibleProvider, "describe_sprite_metadata_batch", return_value=metadata),
             ):
                 named = generate_descriptions(
                     {

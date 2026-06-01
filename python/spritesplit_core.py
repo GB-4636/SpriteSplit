@@ -219,40 +219,62 @@ def generate_descriptions(payload: dict[str, Any]) -> dict[str, Any]:
         if sprite.get("id") not in target_ids and sprite.get("name")
     }
 
-    for sprite in sprite_targets:
+    batch_size = int(provider_config.get("batchSize", 6) or 6)
+    for batch_start in range(0, len(sprite_targets), batch_size):
+        batch = sprite_targets[batch_start : batch_start + batch_size]
+        debug_log(
+            f"AI naming batch {batch_start + 1}-{batch_start + len(batch)} "
+            f"of {len(sprite_targets)}"
+        )
         try:
-            metadata = read_or_generate_json_cache(
-                build_cache_key(
-                    "sprite-metadata-v2",
-                    source_image_path,
-                    provider_config,
-                    bbox=sprite["bbox"],
-                    prompt=prompt,
-                    sheet_context=project.get("sheetContext", ""),
-                ),
-                lambda sprite=sprite: provider.describe_sprite_metadata(
-                    image=image,
-                    bbox=sprite["bbox"],
-                    prompt=prompt,
-                    sheet_context=project.get("sheetContext", ""),
-                    suggested_name=sprite.get("name", ""),
-                ),
+            batch_metadata = provider.describe_sprite_metadata_batch(
+                image=image,
+                sprites=batch,
+                prompt=prompt,
+                sheet_context=project.get("sheetContext", ""),
             )
-            ai_name = unique_asset_name(
-                sanitize_asset_name(str(metadata.get("name") or sprite.get("name") or "sprite")),
-                used_names,
-            )
-            used_names.add(ai_name)
-            description = str(metadata.get("description") or "").strip()
-            if not description:
-                description = str(metadata.get("summary") or metadata.get("aiDescription") or "").strip()
-
-            sprite["name"] = ai_name
-            sprite["aiDescription"] = description
-            if not sprite.get("description"):
-                sprite["description"] = description
         except Exception as error:  # noqa: BLE001
-            warnings.append(f"Sprite {sprite.get('id', '?')} description failed: {error}")
+            warnings.append(
+                f"Sprite batch {batch_start + 1}-{batch_start + len(batch)} naming failed: {error}"
+            )
+            batch_metadata = {}
+
+        for sprite in batch:
+            try:
+                metadata = batch_metadata.get(sprite["id"])
+                if metadata is None:
+                    metadata = read_or_generate_json_cache(
+                        build_cache_key(
+                            "sprite-metadata-v2",
+                            source_image_path,
+                            provider_config,
+                            bbox=sprite["bbox"],
+                            prompt=prompt,
+                            sheet_context=project.get("sheetContext", ""),
+                        ),
+                        lambda sprite=sprite: provider.describe_sprite_metadata(
+                            image=image,
+                            bbox=sprite["bbox"],
+                            prompt=prompt,
+                            sheet_context=project.get("sheetContext", ""),
+                            suggested_name=sprite.get("name", ""),
+                        ),
+                    )
+                ai_name = unique_asset_name(
+                    sanitize_asset_name(str(metadata.get("name") or sprite.get("name") or "sprite")),
+                    used_names,
+                )
+                used_names.add(ai_name)
+                description = str(metadata.get("description") or "").strip()
+                if not description:
+                    description = str(metadata.get("summary") or metadata.get("aiDescription") or "").strip()
+
+                sprite["name"] = ai_name
+                sprite["aiDescription"] = description
+                if not sprite.get("description"):
+                    sprite["description"] = description
+            except Exception as error:  # noqa: BLE001
+                warnings.append(f"Sprite {sprite.get('id', '?')} description failed: {error}")
 
     project["warnings"] = dedupe_warnings(warnings)
     return project
@@ -280,7 +302,52 @@ class OpenAICompatibleProvider:
             f"Original generation prompt: {prompt or 'N/A'}\n"
             f"Detected sprite count: {sprite_count}"
         )
-        return self._chat_with_image(image_to_data_uri(image), text_prompt)
+        return self._chat_with_image([{"type": "text", "text": text_prompt}])
+
+    def describe_sprite_metadata_batch(
+        self,
+        image: Image.Image,
+        sprites: list[dict[str, Any]],
+        prompt: str,
+        sheet_context: str,
+    ) -> dict[str, dict[str, str]]:
+        content: list[dict[str, Any]] = [
+            {
+                "type": "text",
+                "text": (
+                    f"{self.sprite_prompt}\n"
+                    "Name each provided sprite for game development asset lookup. "
+                    "Return JSON only as an array. Each item must use this schema: "
+                    '{"id":"sprite-id","name":"short_snake_case_asset_name",'
+                    '"description":"one concise visual description"}.\n'
+                    "The name is the primary output. It must be specific, developer-friendly, "
+                    "lowercase snake_case, 2 to 5 words, and contain only a-z, 0-9, and underscores. "
+                    "Do not include file extensions, indexes, generic words like sprite/image/icon unless necessary, "
+                    "or surrounding markdown.\n"
+                    f"Original generation prompt: {prompt or 'N/A'}\n"
+                    f"Sheet context: {sheet_context or 'N/A'}"
+                ),
+            }
+        ]
+        for sprite in sprites:
+            content.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"Sprite id: {sprite['id']}; "
+                        f"current suggested name: {sprite.get('name') or 'N/A'}"
+                    ),
+                }
+            )
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": image_to_data_uri(crop_image(image, sprite["bbox"]))},
+                }
+            )
+
+        response = self._chat_with_image(content)
+        return parse_sprite_metadata_batch_response(response)
 
     def describe_sprite_metadata(
         self,
@@ -303,13 +370,18 @@ class OpenAICompatibleProvider:
             f"Sheet context: {sheet_context or 'N/A'}\n"
             f"Current suggested name: {suggested_name or 'N/A'}"
         )
-        response = self._chat_with_image(image_to_data_uri(cropped), text_prompt)
+        response = self._chat_with_image(
+            [
+                {"type": "text", "text": text_prompt},
+                {"type": "image_url", "image_url": {"url": image_to_data_uri(cropped)}},
+            ]
+        )
         metadata = parse_sprite_metadata_response(response)
         metadata["name"] = sanitize_asset_name(metadata.get("name") or suggested_name or "sprite")
         metadata["description"] = str(metadata.get("description") or response).strip()
         return metadata
 
-    def _chat_with_image(self, image_data_uri: str, text_prompt: str) -> str:
+    def _chat_with_image(self, content: list[dict[str, Any]]) -> str:
         url = self._chat_completions_url()
         payload = {
             "model": self.model,
@@ -317,10 +389,7 @@ class OpenAICompatibleProvider:
             "messages": [
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": text_prompt},
-                        {"type": "image_url", "image_url": {"url": image_data_uri}},
-                    ],
+                    "content": content,
                 }
             ],
         }
@@ -361,7 +430,6 @@ class OpenAICompatibleProvider:
         if self.base_url.endswith("/chat/completions"):
             return self.base_url
         return f"{self.base_url}/chat/completions"
-
 
 def debug_log(message: str) -> None:
     log_path = os.environ.get("SPRITESPLIT_PYTHON_LOG")
@@ -602,6 +670,41 @@ def parse_sprite_metadata_response(response: str) -> dict[str, str]:
         "name": first_line,
         "description": text,
     }
+
+
+def parse_sprite_metadata_batch_response(response: str) -> dict[str, dict[str, str]]:
+    text = response.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.I)
+        text = re.sub(r"\s*```$", "", text)
+
+    json_match = re.search(r"\[.*\]", text, flags=re.S)
+    if not json_match:
+        json_match = re.search(r"\{.*\}", text, flags=re.S)
+    if not json_match:
+        raise ValueError(f"AI batch response did not contain JSON: {truncate_log(text)}")
+
+    parsed = json.loads(json_match.group(0))
+    if isinstance(parsed, dict):
+        items = parsed.get("sprites") or parsed.get("items") or parsed.get("results") or []
+    else:
+        items = parsed
+
+    if not isinstance(items, list):
+        raise ValueError(f"AI batch response JSON was not a list: {truncate_log(text)}")
+
+    metadata_by_id: dict[str, dict[str, str]] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        sprite_id = str(item.get("id") or item.get("spriteId") or "").strip()
+        if not sprite_id:
+            continue
+        metadata_by_id[sprite_id] = {
+            "name": str(item.get("name", "")).strip(),
+            "description": str(item.get("description", "")).strip(),
+        }
+    return metadata_by_id
 
 
 def hash_file(path: Path) -> str:

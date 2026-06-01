@@ -1,14 +1,14 @@
 ﻿index,id,name,group,tags,description,aiDescription,x,y,width,height,centerX,centerY,area,cropPath
-1,sprite-001,sprite_001,,,,,70,87,192,138,166,156,26496,\Users\gb\Desktop\spritesplit-export/crops/001_sprite_001.png
-2,sprite-002,sprite_002,,,,,549,89,164,134,631,156,21976,\Users\gb\Desktop\spritesplit-export/crops/002_sprite_002.png
-3,sprite-003,sprite_003,,,,,769,107,178,105,858,159.5,18690,\Users\gb\Desktop\spritesplit-export/crops/003_sprite_003.png
-4,sprite-004,sprite_004,,,,,319,108,170,104,404,160,17680,\Users\gb\Desktop\spritesplit-export/crops/004_sprite_004.png
-5,sprite-005,sprite_005,,,,,125,300,90,191,170,395.5,17190,\Users\gb\Desktop\spritesplit-export/crops/005_sprite_005.png
-6,sprite-006,sprite_006,,,,,318,328,168,154,402,405,25872,\Users\gb\Desktop\spritesplit-export/crops/006_sprite_006.png
-7,sprite-007,sprite_007,,,,,551,332,140,139,621,401.5,19460,\Users\gb\Desktop\spritesplit-export/crops/007_sprite_007.png
-8,sprite-008,sprite_008,,,,,772,332,140,140,842,402,19600,\Users\gb\Desktop\spritesplit-export/crops/008_sprite_008.png
-9,sprite-009,sprite_009,,,,,771,577,172,173,857,663.5,29756,\Users\gb\Desktop\spritesplit-export/crops/009_sprite_009.png
-10,sprite-010,sprite_010,,,,,78,592,184,138,170,661,25392,\Users\gb\Desktop\spritesplit-export/crops/010_sprite_010.png
-11,sprite-011,sprite_011,,,,,304,619,418,106,513,672,44308,\Users\gb\Desktop\spritesplit-export/crops/011_sprite_011.png
-12,sprite-012,sprite_012,,,,,539,797,191,149,634.5,871.5,28459,\Users\gb\Desktop\spritesplit-export/crops/012_sprite_012.png
-13,sprite-013,sprite_013,,,,,242,823,179,120,331.5,883,21480,\Users\gb\Desktop\spritesplit-export/crops/013_sprite_013.png
+1,sprite-001,bamboo_basket,,,"A woven bamboo basket with a thick, reinforced rim, depicted from a slightly elevated angle.","A woven bamboo basket with a thick, reinforced rim, depicted from a slightly elevated angle.",70,87,192,138,166,156,26496,
+2,sprite-002,red_paper_umbrella,,,A red and yellow paper umbrella prop.,A red and yellow paper umbrella prop.,549,89,164,134,631,156,21976,
+3,sprite-003,wooden_table_texture_patch,,,"A subtle hand-painted wooden table texture in warm earth tones, suitable for background layering.","A subtle hand-painted wooden table texture in warm earth tones, suitable for background layering.",769,107,178,105,858,159.5,18690,
+4,sprite-004,rice_noodle_bowl,,,"Subtle hand-painted rice noodle bowl with warm earth tones, suitable for UI background decoration.","Subtle hand-painted rice noodle bowl with warm earth tones, suitable for UI background decoration.",319,108,170,104,404,160,17680,
+5,sprite-005,hanging_chili_string,,,A hand-painted cluster of red chili peppers hanging vertically.,A hand-painted cluster of red chili peppers hanging vertically.,125,300,90,191,170,395.5,17190,
+6,sprite-006,puer_tea_cake,,,"A round, hand-painted Pu'er tea cake with dark brown edges and a golden-yellow center, styled as a warm decorative prop.","A round, hand-painted Pu'er tea cake with dark brown edges and a golden-yellow center, styled as a warm decorative prop.",318,328,168,154,402,405,25872,
+7,sprite-007,ethnic_corner_ornament_a,,,Hand-painted ethnic geometric pattern corner in warm Yunnan-inspired earth tones.,Hand-painted ethnic geometric pattern corner in warm Yunnan-inspired earth tones.,551,332,140,139,621,401.5,19460,
+8,sprite-008,ethnic_pattern_corner,,,A decorative corner ornament with warm-toned geometric ethnic patterns.,A decorative corner ornament with warm-toned geometric ethnic patterns.,772,332,140,140,842,402,19600,
+9,sprite-009,tea_horse_road_bell,,,rustic brass bell with wooden handle and red knot,rustic brass bell with wooden handle and red knot,771,577,172,173,857,663.5,29756,
+10,sprite-010,small_market_cloth,,,"a warm-toned, striped market cloth with tassels in red, green, and beige.","a warm-toned, striped market cloth with tassels in red, green, and beige.",78,592,184,138,170,661,25392,
+11,sprite-011,distant_yunnan_mountains,,,"A misty, hand-painted silhouette of distant Yunnan mountains with warm earth-tone gradients, designed as a subtle background prop.","A misty, hand-painted silhouette of distant Yunnan mountains with warm earth-tone gradients, designed as a subtle background prop.",304,619,418,106,513,672,44308,
+12,sprite-012,yunnan_rice_noodle_bowl,,,"A warm, hand-painted bowl of rice noodles with chopsticks, greens, and an egg, in a soft Yunnan-inspired style.","A warm, hand-painted bowl of rice noodles with chopsticks, greens, and an egg, in a soft Yunnan-inspired style.",539,797,191,149,634.5,871.5,28459,
+13,sprite-013,rice_noodle_bowl_2,,,"Subtle hand-painted Yunnan-style striped bowl with rice noodles and colorful garnishes, designed as a decorative UI background prop.","Subtle hand-painted Yunnan-style striped bowl with rice noodles and colorful garnishes, designed as a decorative UI background prop.",242,823,179,120,331.5,883,21480,
