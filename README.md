@@ -1,5 +1,7 @@
 # SpriteSplit
 
+**English** | [中文](README.zh-CN.md)
+
 SpriteSplit is a desktop tool for cleaning up AI-generated sprite sheets that do not follow strict spacing or alignment. It detects independent non-transparent regions from PNG alpha, lets you correct and organize boxes visually, optionally enriches assets with AI-generated descriptions, and exports both structured metadata and cropped sprite images.
 
 ## What makes it different
