@@ -1,10 +1,31 @@
 import {
   startTransition,
+  useCallback,
   useEffect,
   useEffectEvent,
   useRef,
   useState,
 } from 'react'
+import {
+  ArrowDown,
+  ArrowUp,
+  BoxSelect,
+  Download,
+  FolderOpen,
+  Languages,
+  Maximize2,
+  MousePointer2,
+  PlusSquare,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Settings2,
+  Sparkles,
+  Trash2,
+  Upload,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 
 import './App.css'
@@ -87,7 +108,7 @@ const defaultProviderConfig: ProviderConfig = {
   sheetPrompt:
     'Summarize this sprite sheet in one short paragraph for asset management. Focus on style, subject matter, and repeated motifs.',
   spritePrompt:
-    'Describe this sprite briefly for naming and cataloging. Return one concise sentence.',
+    'Name this sprite for game development asset lookup, then describe it briefly.',
 }
 
 const defaultExportSettings: ExportSettings = {
@@ -165,17 +186,17 @@ const UI_TEXT = {
     selectSpriteHint: 'Select a sprite box to inspect or edit it.',
     spriteLocation: (width: number, height: number, x: number, y: number) =>
       `${width}×${height} at ${x}, ${y}`,
-    aiTitle: 'AI Descriptions',
+    aiTitle: 'AI Naming',
     aiDescriptionText:
-      'Use an OpenAI-compatible vision endpoint. Descriptions are cached by image hash, bbox, prompt, and model settings.',
+      'Use an OpenAI-compatible vision endpoint to rename each sprite with a developer-friendly asset name and keep a short description.',
     enableAiProvider: 'Enable AI provider',
     baseUrl: 'Base URL',
     apiKey: 'API key',
     model: 'Model',
     sheetPrompt: 'Sheet prompt',
     spritePrompt: 'Sprite prompt',
-    describeAll: 'Describe All',
-    describeSelected: 'Describe Selected',
+    describeAll: 'Name All',
+    describeSelected: 'Name Selected',
     sheetContext: 'Sheet context',
     exportTitle: 'Export',
     exportDescription:
@@ -206,8 +227,8 @@ const UI_TEXT = {
     statusRefreshed: (alphaThreshold: number, minArea: number) =>
       `Detection refreshed with alpha threshold ${alphaThreshold} and minimum area ${minArea}.`,
     statusDescribedSelected: (count: number) =>
-      `AI descriptions updated for ${count} selected sprite(s).`,
-    statusDescribedAll: 'AI descriptions updated for the full sheet.',
+      `AI names updated for ${count} selected sprite(s).`,
+    statusDescribedAll: 'AI names updated for the full sheet.',
     statusUndo: 'Undid the last project edit.',
     statusRedo: 'Redid the next project edit.',
     statusDeleted: (count: number) => `Deleted ${count} sprite box(es).`,
@@ -219,7 +240,7 @@ const UI_TEXT = {
     statusResizedBox: 'Resized sprite box.',
     busyAnalyzing: 'Analyzing sprite sheet...',
     busyRerunning: 'Re-running detection...',
-    busyDescribing: 'Generating AI descriptions...',
+    busyDescribing: 'Generating AI names...',
     busyExporting: 'Exporting project...',
   },
   zh: {
@@ -282,17 +303,17 @@ const UI_TEXT = {
     selectSpriteHint: '选择一个精灵框即可查看或编辑。',
     spriteLocation: (width: number, height: number, x: number, y: number) =>
       `${width}×${height}，位置 ${x}, ${y}`,
-    aiTitle: 'AI 描述',
+    aiTitle: 'AI 命名',
     aiDescriptionText:
-      '使用兼容 OpenAI 的视觉接口。描述结果会根据图像哈希、边界框、提示词和模型设置缓存。',
+      '使用兼容 OpenAI 的视觉接口，为每个精灵生成方便开发检索的资源名，并保留简短描述。',
     enableAiProvider: '启用 AI 提供方',
     baseUrl: 'Base URL',
     apiKey: 'API Key',
     model: '模型',
     sheetPrompt: '整张图提示词',
     spritePrompt: '单精灵提示词',
-    describeAll: '描述全部',
-    describeSelected: '描述选中项',
+    describeAll: '命名全部',
+    describeSelected: '命名选中项',
     sheetContext: '整张图上下文',
     exportTitle: '导出',
     exportDescription: '可只导出元数据，或连同统一尺寸裁剪图一起导出，用于后续游戏资源流程。',
@@ -322,8 +343,8 @@ const UI_TEXT = {
     statusRefreshed: (alphaThreshold: number, minArea: number) =>
       `检测已刷新，当前 Alpha 阈值为 ${alphaThreshold}，最小面积为 ${minArea}。`,
     statusDescribedSelected: (count: number) =>
-      `已为 ${count} 个选中精灵更新 AI 描述。`,
-    statusDescribedAll: '已为整张精灵图更新 AI 描述。',
+      `已为 ${count} 个选中精灵更新 AI 命名。`,
+    statusDescribedAll: '已为整张精灵图更新 AI 命名。',
     statusUndo: '已撤销上一次项目编辑。',
     statusRedo: '已重做下一步项目编辑。',
     statusDeleted: (count: number) => `已删除 ${count} 个精灵框。`,
@@ -335,7 +356,7 @@ const UI_TEXT = {
     statusResizedBox: '已调整精灵框大小。',
     busyAnalyzing: '正在分析精灵图...',
     busyRerunning: '正在重新检测...',
-    busyDescribing: '正在生成 AI 描述...',
+    busyDescribing: '正在生成 AI 命名...',
     busyExporting: '正在导出项目...',
   },
 } as const
@@ -396,14 +417,14 @@ function App() {
   const stageWidth = project ? project.imageSize.width * zoom : 0
   const stageHeight = project ? project.imageSize.height * zoom : 0
 
-  const fitStageToViewport = useEffectEvent(() => {
+  const fitStageToViewport = useCallback(() => {
     const current = projectRef.current
     const frame = stageFrameRef.current
     if (!current || !frame) {
       return
     }
     setZoom(calculateFitZoom(current.imageSize.width, current.imageSize.height, frame))
-  })
+  }, [])
 
   const updateZoom = (nextZoom: number) => {
     setZoom(clampZoom(nextZoom))
@@ -986,7 +1007,6 @@ function App() {
         />
 
         <StageWorkspace
-          fitStageToViewport={fitStageToViewport}
           beginDragSelection={beginDragSelection}
           beginMove={beginMove}
           beginResize={beginResize}
@@ -994,7 +1014,6 @@ function App() {
           importImage={importImage}
           previewUrl={previewUrl}
           project={project}
-          resetZoom={resetZoom}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
           setTool={setTool}
@@ -1005,14 +1024,12 @@ function App() {
           statusLabel={statusLabel}
           tool={tool}
           ui={ui}
-          zoomIn={zoomIn}
-          zoomOut={zoomOut}
           zoom={zoom}
         />
 
         <InspectorPanel
           activeSprite={activeSprite}
-          busyLabel={busyLabel}
+          busyState={busyState}
           chooseOutputDirectory={chooseOutputDirectory}
           exportSettings={exportSettings}
           project={project}
@@ -1066,9 +1083,7 @@ function AppToolbar({
       <div className="toolbar-section brand-section">
         <div className="brand-mark">SS</div>
         <div className="brand-copy">
-          <div className="toolbar-overline">SpriteSplit</div>
           <h1>{ui.pageTitle}</h1>
-          <p>{busyLabel || statusLabel}</p>
         </div>
       </div>
 
@@ -1087,54 +1102,63 @@ function AppToolbar({
           )}
           <span className="meta-pill">{ui.historyState(historyIndex, historyTotal)}</span>
         </div>
+        <div className="toolbar-status">{busyLabel || statusLabel}</div>
       </div>
 
       <div className="toolbar-section toolbar-actions">
+        <div className="toolbar-button-row">
+          <button className="primary command-button" onClick={importImage} type="button">
+            <Upload size={16} />
+            {ui.importPng}
+          </button>
+          <button
+            className="command-button"
+            disabled={!project || !!busyLabel}
+            onClick={rerunDetection}
+            type="button"
+          >
+            <RefreshCw size={16} />
+            {ui.rerunDetection}
+          </button>
+          <button
+            aria-label={ui.undo}
+            className="icon-button"
+            disabled={history.index <= 0 || !!busyLabel}
+            onClick={handleUndo}
+            title={ui.undo}
+            type="button"
+          >
+            <RotateCcw size={17} />
+          </button>
+          <button
+            aria-label={ui.redo}
+            className="icon-button"
+            disabled={history.index >= history.entries.length - 1 || !!busyLabel}
+            onClick={handleRedo}
+            title={ui.redo}
+            type="button"
+          >
+            <RotateCw size={17} />
+          </button>
+        </div>
         <div className="language-switch" role="group" aria-label={ui.languageLabel}>
-          <span>{ui.languageLabel}</span>
+          <Languages size={15} />
           <div className="segmented compact">
             <button
               className={language === 'en' ? 'active' : ''}
               onClick={() => setLanguage('en')}
               type="button"
             >
-              {ui.languageEnglish}
+              EN
             </button>
             <button
               className={language === 'zh' ? 'active' : ''}
               onClick={() => setLanguage('zh')}
               type="button"
             >
-              {ui.languageChinese}
+              中
             </button>
           </div>
-        </div>
-
-        <div className="toolbar-button-row">
-          <button className="primary" onClick={importImage} type="button">
-            {ui.importPng}
-          </button>
-          <button
-            disabled={!project || !!busyLabel}
-            onClick={rerunDetection}
-            type="button"
-          >
-            {ui.rerunDetection}
-          </button>
-          <button
-            disabled={history.index <= 0 || !!busyLabel}
-            onClick={handleUndo}
-            type="button"
-          >
-            {ui.undo}
-          </button>
-          <button
-            disabled={history.index >= history.entries.length - 1 || !!busyLabel}
-            onClick={handleRedo}
-            type="button"
-          >
-            {ui.redo}
-          </button>
         </div>
       </div>
     </header>
@@ -1177,135 +1201,38 @@ function ToolRail({
 }) {
   return (
     <aside className="tool-rail">
-      <section className="panel-card rail-card">
-        <div className="panel-header">
-          <h2>{ui.detectionTitle}</h2>
-          <p>{ui.detectionDescription}</p>
-        </div>
-
-        <label>
-          <span>{ui.alphaThreshold}</span>
-          <input
-            disabled={!project}
-            max={255}
-            min={0}
-            type="range"
-            value={project?.detectionSettings.alphaThreshold ?? 10}
-            onChange={(event) =>
-              updateProject(
-                (draft) => ({
-                  ...draft,
-                  detectionSettings: {
-                    ...draft.detectionSettings,
-                    alphaThreshold: Number(event.target.value),
-                  },
-                }),
-                { selection: selectedIds },
-              )
-            }
-          />
-          <strong>{project?.detectionSettings.alphaThreshold ?? 10}</strong>
-        </label>
-
-        <label>
-          <span>{ui.minRegionArea}</span>
-          <input
-            disabled={!project}
-            min={1}
-            step={1}
-            type="number"
-            value={project?.detectionSettings.minArea ?? 16}
-            onChange={(event) =>
-              updateProject(
-                (draft) => ({
-                  ...draft,
-                  detectionSettings: {
-                    ...draft.detectionSettings,
-                    minArea: Number(event.target.value),
-                  },
-                }),
-                { selection: selectedIds },
-              )
-            }
-          />
-        </label>
-
-        <label>
-          <span>{ui.sortMode}</span>
-          <select
-            disabled={!project}
-            value={
-              project?.detectionSettings.sortMode ??
-              'top-to-bottom-left-to-right'
-            }
-            onChange={(event) =>
-              updateProject(
-                (draft) => ({
-                  ...draft,
-                  detectionSettings: {
-                    ...draft.detectionSettings,
-                    sortMode: event.target.value as typeof defaultDetectionSettings.sortMode,
-                  },
-                }),
-                { selection: selectedIds },
-              )
-            }
-          >
-            <option value="top-to-bottom-left-to-right">
-              {ui.sortTopToBottom}
-            </option>
-            <option value="left-to-right-top-to-bottom">
-              {ui.sortLeftToRight}
-            </option>
-          </select>
-        </label>
-
-        <label className="prompt-field">
-          <span>{ui.originalPrompt}</span>
-          <textarea
-            disabled={!project}
-            placeholder={ui.originalPromptPlaceholder}
-            rows={6}
-            value={project?.prompt ?? ''}
-            onChange={(event) =>
-              updateProject(
-                (draft) => ({
-                  ...draft,
-                  prompt: event.target.value,
-                }),
-                { selection: selectedIds },
-              )
-            }
-          />
-        </label>
-      </section>
-
-      <section className="panel-card rail-card">
+      <section className="panel-card rail-card tool-card">
         <div className="panel-header">
           <h2>{ui.canvasToolsTitle}</h2>
-          <p>{ui.canvasToolsDescription}</p>
         </div>
 
-        <div className="segmented">
+        <div className="tool-mode-grid">
           <button
-            className={tool === 'select' ? 'active' : ''}
+            aria-label={ui.selectTool}
+            className={`tool-button large ${tool === 'select' ? 'active' : ''}`}
             onClick={() => setTool('select')}
+            title={ui.selectTool}
             type="button"
           >
-            {ui.selectTool}
+            <MousePointer2 size={20} />
+            <span>{ui.selectTool}</span>
           </button>
           <button
-            className={tool === 'create' ? 'active' : ''}
+            aria-label={ui.createBox}
+            className={`tool-button large ${tool === 'create' ? 'active' : ''}`}
             onClick={() => setTool('create')}
+            title={ui.createBox}
             type="button"
           >
-            {ui.createBox}
+            <BoxSelect size={20} />
+            <span>{ui.createBox}</span>
           </button>
         </div>
 
-        <label>
-          <span>{ui.zoom}</span>
+        <div className="rail-section-title">{ui.zoom}</div>
+        <div className="zoom-control">
           <input
+            aria-label={ui.zoom}
             max={ZOOM_MAX}
             min={ZOOM_MIN}
             step={ZOOM_STEP}
@@ -1314,53 +1241,204 @@ function ToolRail({
             onChange={(event) => setZoom(Number(event.target.value))}
           />
           <strong>{Math.round(zoom * 100)}%</strong>
-        </label>
+        </div>
 
-        <div className="tool-grid compact-grid">
-          <button disabled={!project} onClick={zoomOut} type="button">
-            -
+        <div className="icon-grid">
+          <button
+            aria-label={ui.zoomOut}
+            className="icon-button"
+            disabled={!project}
+            onClick={zoomOut}
+            title={ui.zoomOut}
+            type="button"
+          >
+            <ZoomOut size={17} />
           </button>
-          <button disabled={!project} onClick={zoomIn} type="button">
-            +
+          <button
+            aria-label={ui.zoomIn}
+            className="icon-button"
+            disabled={!project}
+            onClick={zoomIn}
+            title={ui.zoomIn}
+            type="button"
+          >
+            <ZoomIn size={17} />
           </button>
-          <button disabled={!project} onClick={resetZoom} type="button">
+          <button
+            className="compact-action"
+            disabled={!project}
+            onClick={resetZoom}
+            type="button"
+          >
             {ui.actualSize}
           </button>
-          <button disabled={!project} onClick={fitStageToViewport} type="button">
-            {ui.fitToView}
+          <button
+            aria-label={ui.fitToView}
+            className="icon-button"
+            disabled={!project}
+            onClick={fitStageToViewport}
+            title={ui.fitToView}
+            type="button"
+          >
+            <Maximize2 size={17} />
           </button>
         </div>
 
-        <div className="tool-grid">
+        <div className="rail-section-title">{ui.selectionCount(selectedIds.length)}</div>
+        <div className="icon-grid">
           <button
+            aria-label={ui.delete}
+            className="icon-button danger"
             disabled={selectedIds.length === 0}
             onClick={deleteSelection}
+            title={ui.delete}
             type="button"
           >
-            {ui.delete}
+            <Trash2 size={17} />
           </button>
           <button
+            aria-label={ui.moveUp}
+            className="icon-button"
             disabled={selectedIds.length !== 1}
             onClick={() => reorderSprite(-1)}
+            title={ui.moveUp}
             type="button"
           >
-            {ui.moveUp}
+            <ArrowUp size={17} />
           </button>
           <button
+            aria-label={ui.moveDown}
+            className="icon-button"
             disabled={selectedIds.length !== 1}
             onClick={() => reorderSprite(1)}
+            title={ui.moveDown}
             type="button"
           >
-            {ui.moveDown}
+            <ArrowDown size={17} />
           </button>
         </div>
       </section>
+
+      <details className="panel-card rail-card settings-card">
+        <summary>
+          <span>
+            <Settings2 size={16} />
+            {ui.detectionTitle}
+          </span>
+        </summary>
+
+        <div className="settings-body">
+          <label>
+            <span>{ui.alphaThreshold}</span>
+            <input
+              disabled={!project}
+              max={255}
+              min={0}
+              type="range"
+              value={project?.detectionSettings.alphaThreshold ?? 10}
+              onChange={(event) =>
+                updateProject(
+                  (draft) => ({
+                    ...draft,
+                    detectionSettings: {
+                      ...draft.detectionSettings,
+                      alphaThreshold: Number(event.target.value),
+                    },
+                  }),
+                  { selection: selectedIds },
+                )
+              }
+            />
+            <strong>{project?.detectionSettings.alphaThreshold ?? 10}</strong>
+          </label>
+
+          <label>
+            <span>{ui.minRegionArea}</span>
+            <input
+              disabled={!project}
+              min={1}
+              step={1}
+              type="number"
+              value={project?.detectionSettings.minArea ?? 16}
+              onChange={(event) =>
+                updateProject(
+                  (draft) => ({
+                    ...draft,
+                    detectionSettings: {
+                      ...draft.detectionSettings,
+                      minArea: Number(event.target.value),
+                    },
+                  }),
+                  { selection: selectedIds },
+                )
+              }
+            />
+          </label>
+
+          <label>
+            <span>{ui.sortMode}</span>
+            <select
+              disabled={!project}
+              value={
+                project?.detectionSettings.sortMode ??
+                'top-to-bottom-left-to-right'
+              }
+              onChange={(event) =>
+                updateProject(
+                  (draft) => ({
+                    ...draft,
+                    detectionSettings: {
+                      ...draft.detectionSettings,
+                      sortMode: event.target.value as typeof defaultDetectionSettings.sortMode,
+                    },
+                  }),
+                  { selection: selectedIds },
+                )
+              }
+            >
+              <option value="top-to-bottom-left-to-right">
+                {ui.sortTopToBottom}
+              </option>
+              <option value="left-to-right-top-to-bottom">
+                {ui.sortLeftToRight}
+              </option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <details className="panel-card rail-card settings-card">
+        <summary>
+          <span>
+            <PlusSquare size={16} />
+            {ui.originalPrompt}
+          </span>
+        </summary>
+        <div className="settings-body">
+          <label className="prompt-field">
+            <textarea
+              disabled={!project}
+              placeholder={ui.originalPromptPlaceholder}
+              rows={4}
+              value={project?.prompt ?? ''}
+              onChange={(event) =>
+                updateProject(
+                  (draft) => ({
+                    ...draft,
+                    prompt: event.target.value,
+                  }),
+                  { selection: selectedIds },
+                )
+              }
+            />
+          </label>
+        </div>
+      </details>
     </aside>
   )
 }
 
 function StageWorkspace({
-  fitStageToViewport,
   beginDragSelection,
   beginMove,
   beginResize,
@@ -1368,7 +1446,6 @@ function StageWorkspace({
   importImage,
   previewUrl,
   project,
-  resetZoom,
   selectedIds,
   setSelectedIds,
   setTool,
@@ -1379,11 +1456,8 @@ function StageWorkspace({
   statusLabel,
   tool,
   ui,
-  zoomIn,
-  zoomOut,
   zoom,
 }: {
-  fitStageToViewport: () => void
   beginDragSelection: (
     event: React.PointerEvent<HTMLButtonElement>,
     spriteId: string,
@@ -1398,7 +1472,6 @@ function StageWorkspace({
   importImage: () => void
   previewUrl: string
   project: ProjectDocument | null
-  resetZoom: () => void
   selectedIds: string[]
   setSelectedIds: (value: string[]) => void
   setTool: (tool: ToolMode) => void
@@ -1409,8 +1482,6 @@ function StageWorkspace({
   statusLabel: string
   tool: ToolMode
   ui: (typeof UI_TEXT)[Language]
-  zoomIn: () => void
-  zoomOut: () => void
   zoom: number
 }) {
   return (
@@ -1425,20 +1496,6 @@ function StageWorkspace({
           <span className="meta-pill">{ui.spritesCount(project?.sprites.length ?? 0)}</span>
           <span className="meta-pill">{ui.selectionCount(selectedIds.length)}</span>
           <span className="meta-pill">{ui.zoom} {Math.round(zoom * 100)}%</span>
-        </div>
-        <div className="workspace-zoom-controls">
-          <button disabled={!project} onClick={zoomOut} type="button">
-            {ui.zoomOut}
-          </button>
-          <button disabled={!project} onClick={zoomIn} type="button">
-            {ui.zoomIn}
-          </button>
-          <button disabled={!project} onClick={resetZoom} type="button">
-            {ui.actualSize}
-          </button>
-          <button disabled={!project} onClick={fitStageToViewport} type="button">
-            {ui.fitToView}
-          </button>
         </div>
       </div>
 
@@ -1544,7 +1601,7 @@ function StageWorkspace({
 
 function InspectorPanel({
   activeSprite,
-  busyLabel,
+  busyState,
   chooseOutputDirectory,
   exportSettings,
   project,
@@ -1561,7 +1618,7 @@ function InspectorPanel({
   updateProject,
 }: {
   activeSprite: SpriteRecord | null
-  busyLabel: string
+  busyState: BusyState
   chooseOutputDirectory: () => void
   exportSettings: ExportSettings
   project: ProjectDocument | null
@@ -1580,6 +1637,10 @@ function InspectorPanel({
     options?: { push?: boolean; selection?: string[] },
   ) => void
 }) {
+  const aiBusy = busyState === 'describing'
+  const exportBusy = busyState === 'exporting'
+  const projectChanging = busyState === 'analyzing' || busyState === 'rerunning'
+
   return (
     <aside className="inspector-shell">
       <section className="panel-card tabs-card">
@@ -1589,6 +1650,7 @@ function InspectorPanel({
             onClick={() => setSidebarTab('inspect')}
             type="button"
           >
+            <Settings2 size={15} />
             {ui.inspect}
           </button>
           <button
@@ -1596,6 +1658,7 @@ function InspectorPanel({
             onClick={() => setSidebarTab('ai')}
             type="button"
           >
+            <Sparkles size={15} />
             {ui.ai}
           </button>
           <button
@@ -1603,6 +1666,7 @@ function InspectorPanel({
             onClick={() => setSidebarTab('export')}
             type="button"
           >
+            <Download size={15} />
             {ui.export}
           </button>
         </div>
@@ -1663,7 +1727,7 @@ function InspectorPanel({
                 <label>
                   <span>{ui.description}</span>
                   <textarea
-                    rows={4}
+                    rows={3}
                     value={activeSprite.description}
                     onChange={(event) =>
                       updateSpriteField(
@@ -1677,7 +1741,7 @@ function InspectorPanel({
                 </label>
                 <label>
                   <span>{ui.aiDescription}</span>
-                  <textarea rows={4} value={activeSprite.aiDescription} readOnly />
+                  <textarea rows={3} value={activeSprite.aiDescription} readOnly />
                 </label>
                 <div className="bbox-grid">
                   <Metric label="X" value={activeSprite.bbox.x} />
@@ -1790,7 +1854,7 @@ function InspectorPanel({
             <label>
               <span>{ui.sheetPrompt}</span>
               <textarea
-                rows={4}
+                rows={3}
                 value={providerConfig.sheetPrompt}
                 onChange={(event) =>
                   setProviderConfig((current) => ({
@@ -1803,7 +1867,7 @@ function InspectorPanel({
             <label>
               <span>{ui.spritePrompt}</span>
               <textarea
-                rows={4}
+                rows={3}
                 value={providerConfig.spritePrompt}
                 onChange={(event) =>
                   setProviderConfig((current) => ({
@@ -1815,14 +1879,20 @@ function InspectorPanel({
             </label>
             <div className="tool-grid">
               <button
-                disabled={!project || !!busyLabel}
+                disabled={!project || aiBusy || exportBusy || projectChanging}
                 onClick={() => runDescriptionGeneration(false)}
                 type="button"
               >
                 {ui.describeAll}
               </button>
               <button
-                disabled={!project || selectedIds.length === 0 || !!busyLabel}
+                disabled={
+                  !project ||
+                  selectedIds.length === 0 ||
+                  aiBusy ||
+                  exportBusy ||
+                  projectChanging
+                }
                 onClick={() => runDescriptionGeneration(true)}
                 type="button"
               >
@@ -1848,7 +1918,8 @@ function InspectorPanel({
               <span>{ui.outputDirectory}</span>
               <div className="path-row">
                 <input readOnly type="text" value={exportSettings.outputDir} />
-                <button onClick={chooseOutputDirectory} type="button">
+                <button className="icon-text-button" onClick={chooseOutputDirectory} type="button">
+                  <FolderOpen size={15} />
                   {ui.browse}
                 </button>
               </div>
@@ -1936,11 +2007,12 @@ function InspectorPanel({
               <span>{ui.writeCsv}</span>
             </label>
             <button
-              className="primary"
-              disabled={!project || !!busyLabel}
+              className="primary icon-text-button"
+              disabled={!project || exportBusy}
               onClick={runExport}
               type="button"
             >
+              <Download size={16} />
               {ui.exportProject}
             </button>
           </>

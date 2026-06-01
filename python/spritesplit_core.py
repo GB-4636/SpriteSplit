@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -211,18 +212,25 @@ def generate_descriptions(payload: dict[str, Any]) -> dict[str, Any]:
         project["warnings"] = dedupe_warnings(warnings)
         return project
 
+    target_ids = {sprite["id"] for sprite in sprite_targets}
+    used_names = {
+        sanitize_asset_name(sprite.get("name", ""))
+        for sprite in sprites
+        if sprite.get("id") not in target_ids and sprite.get("name")
+    }
+
     for sprite in sprite_targets:
         try:
-            description = read_or_generate_cache(
+            metadata = read_or_generate_json_cache(
                 build_cache_key(
-                    "sprite",
+                    "sprite-metadata-v2",
                     source_image_path,
                     provider_config,
                     bbox=sprite["bbox"],
                     prompt=prompt,
                     sheet_context=project.get("sheetContext", ""),
                 ),
-                lambda sprite=sprite: provider.describe_sprite(
+                lambda sprite=sprite: provider.describe_sprite_metadata(
                     image=image,
                     bbox=sprite["bbox"],
                     prompt=prompt,
@@ -230,6 +238,16 @@ def generate_descriptions(payload: dict[str, Any]) -> dict[str, Any]:
                     suggested_name=sprite.get("name", ""),
                 ),
             )
+            ai_name = unique_asset_name(
+                sanitize_asset_name(str(metadata.get("name") or sprite.get("name") or "sprite")),
+                used_names,
+            )
+            used_names.add(ai_name)
+            description = str(metadata.get("description") or "").strip()
+            if not description:
+                description = str(metadata.get("summary") or metadata.get("aiDescription") or "").strip()
+
+            sprite["name"] = ai_name
             sprite["aiDescription"] = description
             if not sprite.get("description"):
                 sprite["description"] = description
@@ -245,6 +263,7 @@ class OpenAICompatibleProvider:
         self.base_url = provider_config["baseUrl"].rstrip("/")
         self.api_key = provider_config["apiKey"]
         self.model = provider_config["model"]
+        self.timeout_seconds = int(provider_config.get("timeoutSeconds", 60) or 60)
         self.sheet_prompt = provider_config.get(
             "sheetPrompt",
             "Summarize this sprite sheet in one short paragraph for asset management. "
@@ -263,24 +282,35 @@ class OpenAICompatibleProvider:
         )
         return self._chat_with_image(image_to_data_uri(image), text_prompt)
 
-    def describe_sprite(
+    def describe_sprite_metadata(
         self,
         image: Image.Image,
         bbox: dict[str, int],
         prompt: str,
         sheet_context: str,
         suggested_name: str,
-    ) -> str:
+    ) -> dict[str, str]:
         cropped = crop_image(image, bbox)
         text_prompt = (
             f"{self.sprite_prompt}\n"
+            "Return JSON only with this schema: "
+            '{"name":"short_snake_case_asset_name","description":"one concise visual description"}.\n'
+            "The name is the primary output. It must be specific, developer-friendly, "
+            "lowercase snake_case, 2 to 5 words, and contain only a-z, 0-9, and underscores. "
+            "Do not include file extensions, indexes, generic words like sprite/image/icon unless necessary, "
+            "or surrounding markdown.\n"
             f"Original generation prompt: {prompt or 'N/A'}\n"
             f"Sheet context: {sheet_context or 'N/A'}\n"
             f"Current suggested name: {suggested_name or 'N/A'}"
         )
-        return self._chat_with_image(image_to_data_uri(cropped), text_prompt)
+        response = self._chat_with_image(image_to_data_uri(cropped), text_prompt)
+        metadata = parse_sprite_metadata_response(response)
+        metadata["name"] = sanitize_asset_name(metadata.get("name") or suggested_name or "sprite")
+        metadata["description"] = str(metadata.get("description") or response).strip()
+        return metadata
 
     def _chat_with_image(self, image_data_uri: str, text_prompt: str) -> str:
+        url = self._chat_completions_url()
         payload = {
             "model": self.model,
             "temperature": 0.2,
@@ -295,7 +325,7 @@ class OpenAICompatibleProvider:
             ],
         }
         request = urllib.request.Request(
-            url=f"{self.base_url}/chat/completions",
+            url=url,
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -305,10 +335,17 @@ class OpenAICompatibleProvider:
         )
 
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            debug_log(f"AI request start url={redact_url(url)} model={self.model} timeout={self.timeout_seconds}s")
+            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 data = json.loads(response.read().decode("utf-8"))
+            debug_log(f"AI request complete url={redact_url(url)}")
         except urllib.error.HTTPError as error:
-            raise RuntimeError(error.read().decode("utf-8", errors="ignore")) from error
+            body = error.read().decode("utf-8", errors="ignore")
+            debug_log(f"AI request HTTP {error.code} url={redact_url(url)} body={truncate_log(body)}")
+            raise RuntimeError(body) from error
+        except Exception as error:
+            debug_log(f"AI request failed url={redact_url(url)} error={error}")
+            raise
 
         message = data["choices"][0]["message"]["content"]
         if isinstance(message, list):
@@ -319,6 +356,34 @@ class OpenAICompatibleProvider:
             ]
             return " ".join(part.strip() for part in text_parts if part.strip())
         return str(message).strip()
+
+    def _chat_completions_url(self) -> str:
+        if self.base_url.endswith("/chat/completions"):
+            return self.base_url
+        return f"{self.base_url}/chat/completions"
+
+
+def debug_log(message: str) -> None:
+    log_path = os.environ.get("SPRITESPLIT_PYTHON_LOG")
+    if not log_path:
+        return
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    try:
+        with Path(log_path).open("a", encoding="utf-8") as log_file:
+            log_file.write(f"{timestamp} {message}\n")
+    except OSError:
+        pass
+
+
+def redact_url(url: str) -> str:
+    return re.sub(r"([?&](?:api[_-]?key|key|token)=)[^&]+", r"\1<redacted>", url, flags=re.I)
+
+
+def truncate_log(value: str, limit: int = 1200) -> str:
+    value = value.strip()
+    if len(value) <= limit:
+        return value
+    return f"{value[:limit]}...<truncated>"
 
 
 def export_project(payload: dict[str, Any]) -> dict[str, Any]:
@@ -468,6 +533,8 @@ def build_cache_key(
     hasher.update(hash_file(image_path).encode("utf-8"))
     hasher.update(provider_config.get("baseUrl", "").encode("utf-8"))
     hasher.update(provider_config.get("model", "").encode("utf-8"))
+    hasher.update(provider_config.get("sheetPrompt", "").encode("utf-8"))
+    hasher.update(provider_config.get("spritePrompt", "").encode("utf-8"))
     hasher.update(prompt.encode("utf-8"))
     hasher.update(sheet_context.encode("utf-8"))
     if bbox:
@@ -496,6 +563,47 @@ def read_or_generate_cache(cache_key: str, factory: Any) -> str:
     return value
 
 
+def read_or_generate_json_cache(cache_key: str, factory: Any) -> dict[str, Any]:
+    cache_path = get_cache_dir() / f"{cache_key}.json"
+    if cache_path.exists():
+        cached = json.loads(cache_path.read_text(encoding="utf-8"))
+        value = cached.get("value", {})
+        if isinstance(value, dict):
+            return value
+        return parse_sprite_metadata_response(str(value))
+
+    value = factory()
+    if not isinstance(value, dict):
+        value = parse_sprite_metadata_response(str(value))
+    cache_path.write_text(json.dumps({"value": value}, ensure_ascii=False), encoding="utf-8")
+    return value
+
+
+def parse_sprite_metadata_response(response: str) -> dict[str, str]:
+    text = response.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.I)
+        text = re.sub(r"\s*```$", "", text)
+
+    json_match = re.search(r"\{.*\}", text, flags=re.S)
+    if json_match:
+        try:
+            parsed = json.loads(json_match.group(0))
+            if isinstance(parsed, dict):
+                return {
+                    "name": str(parsed.get("name", "")).strip(),
+                    "description": str(parsed.get("description", "")).strip(),
+                }
+        except json.JSONDecodeError:
+            pass
+
+    first_line = next((line.strip() for line in text.splitlines() if line.strip()), text)
+    return {
+        "name": first_line,
+        "description": text,
+    }
+
+
 def hash_file(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as file:
@@ -506,6 +614,22 @@ def hash_file(path: Path) -> str:
 
 def sanitize_filename(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "_", value).strip("_") or "sprite"
+
+
+def sanitize_asset_name(value: str) -> str:
+    normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    normalized = re.sub(r"[^A-Za-z0-9]+", "_", normalized).strip("_").lower()
+    normalized = re.sub(r"_+", "_", normalized)
+    return normalized or "sprite"
+
+
+def unique_asset_name(base_name: str, used_names: set[str]) -> str:
+    candidate = base_name
+    suffix = 2
+    while candidate in used_names:
+        candidate = f"{base_name}_{suffix}"
+        suffix += 1
+    return candidate
 
 
 def dedupe_warnings(warnings: list[str]) -> list[str]:

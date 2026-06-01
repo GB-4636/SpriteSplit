@@ -48,9 +48,10 @@ The app resolves Python in this order:
 
 1. `SPRITESPLIT_PYTHON`
 2. `./.venv/Scripts/python.exe`
-3. The Codex bundled runtime path when present
-4. `python`
-5. `py -3`
+3. `./.venv/bin/python`
+4. The Codex bundled runtime path when present
+5. `python3.13`, `python3.12`, `python3.11`, `python3.10`, `python3`, `python`
+6. `py -3`
 
 If Python is not on your machine, set `SPRITESPLIT_PYTHON` explicitly before launching `tauri dev`.
 

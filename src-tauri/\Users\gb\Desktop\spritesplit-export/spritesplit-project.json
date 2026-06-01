@@ -1,0 +1,300 @@
+{
+  "detectionSettings": {
+    "alphaThreshold": 10,
+    "minArea": 16,
+    "sortMode": "top-to-bottom-left-to-right"
+  },
+  "exportSettings": {
+    "outputDir": "\\Users\\gb\\Desktop\\spritesplit-export",
+    "exportCrops": true,
+    "normalizeCanvas": false,
+    "canvasWidth": 256,
+    "canvasHeight": 256,
+    "includeJson": true,
+    "includeCsv": true
+  },
+  "imageSize": {
+    "height": 1024,
+    "width": 1024
+  },
+  "prompt": "",
+  "sheetContext": "",
+  "sourceImageName": "image.png",
+  "sourceImagePath": "/Users/gb/Desktop/image.png",
+  "sprites": [
+    {
+      "aiDescription": "",
+      "area": 26496,
+      "bbox": {
+        "height": 138,
+        "width": 192,
+        "x": 70,
+        "y": 87
+      },
+      "center": {
+        "x": 166,
+        "y": 156
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/001_sprite_001.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-001",
+      "index": 1,
+      "name": "sprite_001",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 21976,
+      "bbox": {
+        "height": 134,
+        "width": 164,
+        "x": 549,
+        "y": 89
+      },
+      "center": {
+        "x": 631,
+        "y": 156
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/002_sprite_002.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-002",
+      "index": 2,
+      "name": "sprite_002",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 18690,
+      "bbox": {
+        "height": 105,
+        "width": 178,
+        "x": 769,
+        "y": 107
+      },
+      "center": {
+        "x": 858,
+        "y": 159.5
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/003_sprite_003.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-003",
+      "index": 3,
+      "name": "sprite_003",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 17680,
+      "bbox": {
+        "height": 104,
+        "width": 170,
+        "x": 319,
+        "y": 108
+      },
+      "center": {
+        "x": 404,
+        "y": 160
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/004_sprite_004.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-004",
+      "index": 4,
+      "name": "sprite_004",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 17190,
+      "bbox": {
+        "height": 191,
+        "width": 90,
+        "x": 125,
+        "y": 300
+      },
+      "center": {
+        "x": 170,
+        "y": 395.5
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/005_sprite_005.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-005",
+      "index": 5,
+      "name": "sprite_005",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 25872,
+      "bbox": {
+        "height": 154,
+        "width": 168,
+        "x": 318,
+        "y": 328
+      },
+      "center": {
+        "x": 402,
+        "y": 405
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/006_sprite_006.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-006",
+      "index": 6,
+      "name": "sprite_006",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 19460,
+      "bbox": {
+        "height": 139,
+        "width": 140,
+        "x": 551,
+        "y": 332
+      },
+      "center": {
+        "x": 621,
+        "y": 401.5
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/007_sprite_007.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-007",
+      "index": 7,
+      "name": "sprite_007",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 19600,
+      "bbox": {
+        "height": 140,
+        "width": 140,
+        "x": 772,
+        "y": 332
+      },
+      "center": {
+        "x": 842,
+        "y": 402
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/008_sprite_008.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-008",
+      "index": 8,
+      "name": "sprite_008",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 29756,
+      "bbox": {
+        "height": 173,
+        "width": 172,
+        "x": 771,
+        "y": 577
+      },
+      "center": {
+        "x": 857,
+        "y": 663.5
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/009_sprite_009.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-009",
+      "index": 9,
+      "name": "sprite_009",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 25392,
+      "bbox": {
+        "height": 138,
+        "width": 184,
+        "x": 78,
+        "y": 592
+      },
+      "center": {
+        "x": 170,
+        "y": 661
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/010_sprite_010.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-010",
+      "index": 10,
+      "name": "sprite_010",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 44308,
+      "bbox": {
+        "height": 106,
+        "width": 418,
+        "x": 304,
+        "y": 619
+      },
+      "center": {
+        "x": 513,
+        "y": 672
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/011_sprite_011.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-011",
+      "index": 11,
+      "name": "sprite_011",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 28459,
+      "bbox": {
+        "height": 149,
+        "width": 191,
+        "x": 539,
+        "y": 797
+      },
+      "center": {
+        "x": 634.5,
+        "y": 871.5
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/012_sprite_012.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-012",
+      "index": 12,
+      "name": "sprite_012",
+      "tags": []
+    },
+    {
+      "aiDescription": "",
+      "area": 21480,
+      "bbox": {
+        "height": 120,
+        "width": 179,
+        "x": 242,
+        "y": 823
+      },
+      "center": {
+        "x": 331.5,
+        "y": 883
+      },
+      "cropPath": "\\Users\\gb\\Desktop\\spritesplit-export/crops/013_sprite_013.png",
+      "description": "",
+      "group": "",
+      "id": "sprite-013",
+      "index": 13,
+      "name": "sprite_013",
+      "tags": []
+    }
+  ],
+  "warnings": []
+}

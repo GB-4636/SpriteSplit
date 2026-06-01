@@ -1,8 +1,6 @@
 :root {
   color: #edf2f7;
-  background:
-    radial-gradient(circle at top, rgba(46, 89, 150, 0.2), transparent 28%),
-    linear-gradient(180deg, #10141a 0%, #0c1015 56%, #090c10 100%);
+  background: #101113;
   font-family:
     'Segoe UI Variable Text',
     'Segoe UI',
@@ -17,16 +15,16 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg-root: #0b0f14;
-  --bg-panel: #121820;
-  --bg-elevated: #181f29;
+  --bg-root: #101113;
+  --bg-panel: #181a1e;
+  --bg-elevated: #202328;
   --border-strong: rgba(255, 255, 255, 0.08);
   --text-bright: #edf2f7;
   --text-soft: #a5b0bd;
   --text-muted: #778190;
-  --accent: #4288d8;
-  --accent-strong: #2f6db9;
-  --panel-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
+  --accent: #2f8076;
+  --accent-strong: #25645e;
+  --panel-shadow: none;
 }
 
 * {
@@ -36,16 +34,16 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100vh;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  overflow: hidden;
   color: var(--text-bright);
-  background:
-    radial-gradient(circle at top, rgba(46, 89, 150, 0.18), transparent 26%),
-    linear-gradient(180deg, #10141a 0%, #0c1015 56%, #090c10 100%);
+  background: #101113;
 }
 
 button,
@@ -59,7 +57,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-bright);
-  border-radius: 10px;
+  border-radius: 7px;
   padding: 10px 14px;
   cursor: pointer;
   transition:
@@ -93,7 +91,7 @@ input,
 textarea,
 select {
   width: 100%;
-  border-radius: 10px;
+  border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.04);

@@ -3,10 +3,11 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
-from python.spritesplit_core import analyze_image, export_project
+from python.spritesplit_core import OpenAICompatibleProvider, analyze_image, export_project, generate_descriptions
 
 
 class SpriteSplitCoreTests(unittest.TestCase):
@@ -67,6 +68,48 @@ class SpriteSplitCoreTests(unittest.TestCase):
             self.assertEqual(2, len(exported["exportedSprites"]))
             for crop_path in exported["exportedSprites"]:
                 self.assertTrue(Path(crop_path).exists())
+
+    def test_generate_descriptions_renames_sprites_with_ai_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_path = Path(temp_dir) / "sheet.png"
+            build_sample_image(image_path)
+            analyzed = analyze_image(
+                {
+                    "imagePath": str(image_path),
+                    "settings": {
+                        "alphaThreshold": 10,
+                        "minArea": 4,
+                        "sortMode": "top-to-bottom-left-to-right",
+                    },
+                }
+            )
+
+            metadata = [
+                {"name": "Red Fire Orb", "description": "A small red fire orb."},
+                {"name": "green_slime_idle", "description": "A green slime idle frame."},
+            ]
+
+            with (
+                patch.object(OpenAICompatibleProvider, "describe_sheet_context", return_value="pixel fantasy items"),
+                patch.object(OpenAICompatibleProvider, "describe_sprite_metadata", side_effect=metadata),
+            ):
+                named = generate_descriptions(
+                    {
+                        "project": analyzed,
+                        "providerConfig": {
+                            "enabled": True,
+                            "baseUrl": "https://example.test/v1",
+                            "apiKey": "test",
+                            "model": "vision-test",
+                            "sheetPrompt": "context",
+                            "spritePrompt": "name sprites",
+                        },
+                    }
+                )
+
+            self.assertEqual("red_fire_orb", named["sprites"][0]["name"])
+            self.assertEqual("green_slime_idle", named["sprites"][1]["name"])
+            self.assertEqual("A small red fire orb.", named["sprites"][0]["description"])
 
 
 def build_sample_image(destination: Path) -> None:
