@@ -114,6 +114,8 @@ const UI_TEXT = {
     redo: 'Redo',
     statusLabel: 'Status:',
     spritesCount: (count: number) => `${count} sprites`,
+    selectionCount: (count: number) => `${count} selected`,
+    historyState: (index: number, total: number) => `History ${index}/${total}`,
     detectionTitle: 'Detection',
     detectionDescription: 'Alpha thresholding and connected-component grouping.',
     alphaThreshold: 'Alpha threshold',
@@ -227,6 +229,8 @@ const UI_TEXT = {
     redo: '重做',
     statusLabel: '状态：',
     spritesCount: (count: number) => `${count} 个精灵`,
+    selectionCount: (count: number) => `已选 ${count} 个`,
+    historyState: (index: number, total: number) => `历史记录 ${index}/${total}`,
     detectionTitle: '检测',
     detectionDescription: '基于 Alpha 阈值与连通区域分组进行检测。',
     alphaThreshold: 'Alpha 阈值',
@@ -896,712 +900,960 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">SpriteSplit</p>
-          <h1>{ui.heroTitle}</h1>
-          <p className="subtitle">{ui.heroSubtitle}</p>
-        </div>
-        <div className="topbar-meta">
-          <div className="language-switch" role="group" aria-label={ui.languageLabel}>
-            <span>{ui.languageLabel}</span>
-            <div className="segmented">
-              <button
-                className={language === 'en' ? 'active' : ''}
-                onClick={() => setLanguage('en')}
-                type="button"
-              >
-                {ui.languageEnglish}
-              </button>
-              <button
-                className={language === 'zh' ? 'active' : ''}
-                onClick={() => setLanguage('zh')}
-                type="button"
-              >
-                {ui.languageChinese}
-              </button>
-            </div>
-          </div>
-          <div className="topbar-actions">
-            <button className="primary" onClick={importImage} type="button">
-              {ui.importPng}
-            </button>
-            <button
-              disabled={!project || !!busyLabel}
-              onClick={rerunDetection}
-              type="button"
-            >
-              {ui.rerunDetection}
-            </button>
-            <button
-              disabled={history.index <= 0 || !!busyLabel}
-              onClick={handleUndo}
-              type="button"
-            >
-              {ui.undo}
-            </button>
-            <button
-              disabled={history.index >= history.entries.length - 1 || !!busyLabel}
-              onClick={handleRedo}
-              type="button"
-            >
-              {ui.redo}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <section className="status-strip">
-        <div>
-          <strong>{ui.statusLabel}</strong> {busyLabel || statusLabel}
-        </div>
-        {project ? (
-          <div className="status-meta">
-            <span>{project.sourceImageName}</span>
-            <span>{ui.spritesCount(project.sprites.length)}</span>
-            <span>{project.imageSize.width}×{project.imageSize.height}</span>
-          </div>
-        ) : null}
-      </section>
+      <AppToolbar
+        busyLabel={busyLabel}
+        handleRedo={handleRedo}
+        handleUndo={handleUndo}
+        history={history}
+        importImage={importImage}
+        language={language}
+        project={project}
+        rerunDetection={rerunDetection}
+        setLanguage={setLanguage}
+        statusLabel={statusLabel}
+        ui={ui}
+      />
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <main className="workspace">
-        <aside className="control-panel">
-          <section className="panel-card">
-            <div className="panel-header">
-              <h2>{ui.detectionTitle}</h2>
-              <p>{ui.detectionDescription}</p>
-            </div>
-            <label>
-              <span>{ui.alphaThreshold}</span>
-              <input
-                disabled={!project}
-                max={255}
-                min={0}
-                type="range"
-                value={project?.detectionSettings.alphaThreshold ?? 10}
-                onChange={(event) =>
-                  updateProject(
-                    (draft) => ({
-                      ...draft,
-                      detectionSettings: {
-                        ...draft.detectionSettings,
-                        alphaThreshold: Number(event.target.value),
-                      },
-                    }),
-                    { selection: selectedIds },
-                  )
-                }
-              />
-              <strong>{project?.detectionSettings.alphaThreshold ?? 10}</strong>
-            </label>
-            <label>
-              <span>{ui.minRegionArea}</span>
-              <input
-                disabled={!project}
-                min={1}
-                step={1}
-                type="number"
-                value={project?.detectionSettings.minArea ?? 16}
-                onChange={(event) =>
-                  updateProject(
-                    (draft) => ({
-                      ...draft,
-                      detectionSettings: {
-                        ...draft.detectionSettings,
-                        minArea: Number(event.target.value),
-                      },
-                    }),
-                    { selection: selectedIds },
-                  )
-                }
-              />
-            </label>
-            <label>
-              <span>{ui.sortMode}</span>
-              <select
-                disabled={!project}
-                value={
-                  project?.detectionSettings.sortMode ??
-                  'top-to-bottom-left-to-right'
-                }
-                onChange={(event) =>
-                  updateProject(
-                    (draft) => ({
-                      ...draft,
-                      detectionSettings: {
-                        ...draft.detectionSettings,
-                        sortMode: event.target.value as typeof defaultDetectionSettings.sortMode,
-                      },
-                    }),
-                    { selection: selectedIds },
-                  )
-                }
-              >
-                <option value="top-to-bottom-left-to-right">
-                  {ui.sortTopToBottom}
-                </option>
-                <option value="left-to-right-top-to-bottom">
-                  {ui.sortLeftToRight}
-                </option>
-              </select>
-            </label>
-            <label className="prompt-field">
-              <span>{ui.originalPrompt}</span>
-              <textarea
-                disabled={!project}
-                placeholder={ui.originalPromptPlaceholder}
-                rows={5}
-                value={project?.prompt ?? ''}
-                onChange={(event) =>
-                  updateProject(
-                    (draft) => ({
-                      ...draft,
-                      prompt: event.target.value,
-                    }),
-                    { selection: selectedIds },
-                  )
-                }
-              />
-            </label>
-          </section>
+      <main className="app-main">
+        <ToolRail
+          deleteSelection={deleteSelection}
+          project={project}
+          reorderSprite={reorderSprite}
+          selectedIds={selectedIds}
+          setTool={setTool}
+          setZoom={setZoom}
+          tool={tool}
+          ui={ui}
+          updateProject={updateProject}
+          zoom={zoom}
+        />
 
-          <section className="panel-card">
+        <StageWorkspace
+          beginDragSelection={beginDragSelection}
+          beginMove={beginMove}
+          beginResize={beginResize}
+          handleStagePointerDown={handleStagePointerDown}
+          importImage={importImage}
+          previewUrl={previewUrl}
+          project={project}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          setTool={setTool}
+          stageHeight={stageHeight}
+          stageRef={stageRef}
+          stageWidth={stageWidth}
+          statusLabel={statusLabel}
+          tool={tool}
+          ui={ui}
+          zoom={zoom}
+        />
+
+        <InspectorPanel
+          activeSprite={activeSprite}
+          busyLabel={busyLabel}
+          chooseOutputDirectory={chooseOutputDirectory}
+          exportSettings={exportSettings}
+          project={project}
+          providerConfig={providerConfig}
+          runDescriptionGeneration={runDescriptionGeneration}
+          runExport={runExport}
+          selectedIds={selectedIds}
+          setExportSettings={setExportSettings}
+          setProviderConfig={setProviderConfig}
+          setSelectedIds={setSelectedIds}
+          setSidebarTab={setSidebarTab}
+          sidebarTab={sidebarTab}
+          ui={ui}
+          updateProject={updateProject}
+        />
+      </main>
+    </div>
+  )
+}
+
+function AppToolbar({
+  busyLabel,
+  handleRedo,
+  handleUndo,
+  history,
+  importImage,
+  language,
+  project,
+  rerunDetection,
+  setLanguage,
+  statusLabel,
+  ui,
+}: {
+  busyLabel: string
+  handleRedo: () => void
+  handleUndo: () => void
+  history: { entries: ProjectDocument[]; index: number }
+  importImage: () => void
+  language: Language
+  project: ProjectDocument | null
+  rerunDetection: () => void
+  setLanguage: (language: Language) => void
+  statusLabel: string
+  ui: (typeof UI_TEXT)[Language]
+}) {
+  const historyIndex = history.index >= 0 ? history.index + 1 : 0
+  const historyTotal = Math.max(history.entries.length, 0)
+
+  return (
+    <header className="app-toolbar">
+      <div className="toolbar-section brand-section">
+        <div className="brand-mark">SS</div>
+        <div className="brand-copy">
+          <div className="toolbar-overline">SpriteSplit</div>
+          <h1>{ui.pageTitle}</h1>
+          <p>{busyLabel || statusLabel}</p>
+        </div>
+      </div>
+
+      <div className="toolbar-section toolbar-meta">
+        <div className="toolbar-pills">
+          {project ? (
+            <>
+              <span className="meta-pill">{project.sourceImageName}</span>
+              <span className="meta-pill">{ui.spritesCount(project.sprites.length)}</span>
+              <span className="meta-pill">
+                {project.imageSize.width}×{project.imageSize.height}
+              </span>
+            </>
+          ) : (
+            <span className="meta-pill">{ui.emptyStageTitle}</span>
+          )}
+          <span className="meta-pill">{ui.historyState(historyIndex, historyTotal)}</span>
+        </div>
+      </div>
+
+      <div className="toolbar-section toolbar-actions">
+        <div className="language-switch" role="group" aria-label={ui.languageLabel}>
+          <span>{ui.languageLabel}</span>
+          <div className="segmented compact">
+            <button
+              className={language === 'en' ? 'active' : ''}
+              onClick={() => setLanguage('en')}
+              type="button"
+            >
+              {ui.languageEnglish}
+            </button>
+            <button
+              className={language === 'zh' ? 'active' : ''}
+              onClick={() => setLanguage('zh')}
+              type="button"
+            >
+              {ui.languageChinese}
+            </button>
+          </div>
+        </div>
+
+        <div className="toolbar-button-row">
+          <button className="primary" onClick={importImage} type="button">
+            {ui.importPng}
+          </button>
+          <button
+            disabled={!project || !!busyLabel}
+            onClick={rerunDetection}
+            type="button"
+          >
+            {ui.rerunDetection}
+          </button>
+          <button
+            disabled={history.index <= 0 || !!busyLabel}
+            onClick={handleUndo}
+            type="button"
+          >
+            {ui.undo}
+          </button>
+          <button
+            disabled={history.index >= history.entries.length - 1 || !!busyLabel}
+            onClick={handleRedo}
+            type="button"
+          >
+            {ui.redo}
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function ToolRail({
+  deleteSelection,
+  project,
+  reorderSprite,
+  selectedIds,
+  setTool,
+  setZoom,
+  tool,
+  ui,
+  updateProject,
+  zoom,
+}: {
+  deleteSelection: () => void
+  project: ProjectDocument | null
+  reorderSprite: (direction: -1 | 1) => void
+  selectedIds: string[]
+  setTool: (tool: ToolMode) => void
+  setZoom: (zoom: number) => void
+  tool: ToolMode
+  ui: (typeof UI_TEXT)[Language]
+  updateProject: (
+    updater: (draft: ProjectDocument) => ProjectDocument,
+    options?: { push?: boolean; selection?: string[] },
+  ) => void
+  zoom: number
+}) {
+  return (
+    <aside className="tool-rail">
+      <section className="panel-card rail-card">
+        <div className="panel-header">
+          <h2>{ui.detectionTitle}</h2>
+          <p>{ui.detectionDescription}</p>
+        </div>
+
+        <label>
+          <span>{ui.alphaThreshold}</span>
+          <input
+            disabled={!project}
+            max={255}
+            min={0}
+            type="range"
+            value={project?.detectionSettings.alphaThreshold ?? 10}
+            onChange={(event) =>
+              updateProject(
+                (draft) => ({
+                  ...draft,
+                  detectionSettings: {
+                    ...draft.detectionSettings,
+                    alphaThreshold: Number(event.target.value),
+                  },
+                }),
+                { selection: selectedIds },
+              )
+            }
+          />
+          <strong>{project?.detectionSettings.alphaThreshold ?? 10}</strong>
+        </label>
+
+        <label>
+          <span>{ui.minRegionArea}</span>
+          <input
+            disabled={!project}
+            min={1}
+            step={1}
+            type="number"
+            value={project?.detectionSettings.minArea ?? 16}
+            onChange={(event) =>
+              updateProject(
+                (draft) => ({
+                  ...draft,
+                  detectionSettings: {
+                    ...draft.detectionSettings,
+                    minArea: Number(event.target.value),
+                  },
+                }),
+                { selection: selectedIds },
+              )
+            }
+          />
+        </label>
+
+        <label>
+          <span>{ui.sortMode}</span>
+          <select
+            disabled={!project}
+            value={
+              project?.detectionSettings.sortMode ??
+              'top-to-bottom-left-to-right'
+            }
+            onChange={(event) =>
+              updateProject(
+                (draft) => ({
+                  ...draft,
+                  detectionSettings: {
+                    ...draft.detectionSettings,
+                    sortMode: event.target.value as typeof defaultDetectionSettings.sortMode,
+                  },
+                }),
+                { selection: selectedIds },
+              )
+            }
+          >
+            <option value="top-to-bottom-left-to-right">
+              {ui.sortTopToBottom}
+            </option>
+            <option value="left-to-right-top-to-bottom">
+              {ui.sortLeftToRight}
+            </option>
+          </select>
+        </label>
+
+        <label className="prompt-field">
+          <span>{ui.originalPrompt}</span>
+          <textarea
+            disabled={!project}
+            placeholder={ui.originalPromptPlaceholder}
+            rows={6}
+            value={project?.prompt ?? ''}
+            onChange={(event) =>
+              updateProject(
+                (draft) => ({
+                  ...draft,
+                  prompt: event.target.value,
+                }),
+                { selection: selectedIds },
+              )
+            }
+          />
+        </label>
+      </section>
+
+      <section className="panel-card rail-card">
+        <div className="panel-header">
+          <h2>{ui.canvasToolsTitle}</h2>
+          <p>{ui.canvasToolsDescription}</p>
+        </div>
+
+        <div className="segmented">
+          <button
+            className={tool === 'select' ? 'active' : ''}
+            onClick={() => setTool('select')}
+            type="button"
+          >
+            {ui.selectTool}
+          </button>
+          <button
+            className={tool === 'create' ? 'active' : ''}
+            onClick={() => setTool('create')}
+            type="button"
+          >
+            {ui.createBox}
+          </button>
+        </div>
+
+        <label>
+          <span>{ui.zoom}</span>
+          <input
+            max={4}
+            min={0.25}
+            step={0.05}
+            type="range"
+            value={zoom}
+            onChange={(event) => setZoom(Number(event.target.value))}
+          />
+          <strong>{Math.round(zoom * 100)}%</strong>
+        </label>
+
+        <div className="tool-grid">
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={deleteSelection}
+            type="button"
+          >
+            {ui.delete}
+          </button>
+          <button
+            disabled={selectedIds.length !== 1}
+            onClick={() => reorderSprite(-1)}
+            type="button"
+          >
+            {ui.moveUp}
+          </button>
+          <button
+            disabled={selectedIds.length !== 1}
+            onClick={() => reorderSprite(1)}
+            type="button"
+          >
+            {ui.moveDown}
+          </button>
+        </div>
+      </section>
+    </aside>
+  )
+}
+
+function StageWorkspace({
+  beginDragSelection,
+  beginMove,
+  beginResize,
+  handleStagePointerDown,
+  importImage,
+  previewUrl,
+  project,
+  selectedIds,
+  setSelectedIds,
+  setTool,
+  stageHeight,
+  stageRef,
+  stageWidth,
+  statusLabel,
+  tool,
+  ui,
+  zoom,
+}: {
+  beginDragSelection: (
+    event: React.PointerEvent<HTMLButtonElement>,
+    spriteId: string,
+  ) => void
+  beginMove: (spriteId: string, additive: boolean) => void
+  beginResize: (
+    event: React.PointerEvent<HTMLButtonElement>,
+    spriteId: string,
+    handle: ResizeHandle,
+  ) => void
+  handleStagePointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
+  importImage: () => void
+  previewUrl: string
+  project: ProjectDocument | null
+  selectedIds: string[]
+  setSelectedIds: (value: string[]) => void
+  setTool: (tool: ToolMode) => void
+  stageHeight: number
+  stageRef: React.RefObject<HTMLDivElement | null>
+  stageWidth: number
+  statusLabel: string
+  tool: ToolMode
+  ui: (typeof UI_TEXT)[Language]
+  zoom: number
+}) {
+  return (
+    <section className="workspace-shell panel-card">
+      <div className="workspace-topbar">
+        <div className="panel-header">
+          <h2>{project?.sourceImageName ?? ui.pageTitle}</h2>
+          <p>{statusLabel}</p>
+        </div>
+
+        <div className="workspace-meta">
+          <span className="meta-pill">{ui.spritesCount(project?.sprites.length ?? 0)}</span>
+          <span className="meta-pill">{ui.selectionCount(selectedIds.length)}</span>
+          <span className="meta-pill">{ui.zoom} {Math.round(zoom * 100)}%</span>
+        </div>
+      </div>
+
+      <div className="stage-frame">
+        {project && previewUrl ? (
+          <div
+            className={`stage ${tool === 'create' ? 'create-mode' : ''}`}
+            ref={stageRef}
+            onPointerDown={handleStagePointerDown}
+            style={{ width: stageWidth, height: stageHeight }}
+          >
+            <img
+              alt={project.sourceImageName}
+              className="source-image"
+              draggable={false}
+              src={previewUrl}
+              style={{ width: stageWidth, height: stageHeight }}
+            />
+            {project.sprites.map((sprite) => {
+              const selected = selectedIds.includes(sprite.id)
+              return (
+                <button
+                  key={sprite.id}
+                  className={`sprite-box ${selected ? 'selected' : ''}`}
+                  onPointerDown={(event) => beginDragSelection(event, sprite.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    beginMove(sprite.id, event.shiftKey)
+                  }}
+                  style={{
+                    left: sprite.bbox.x * zoom,
+                    top: sprite.bbox.y * zoom,
+                    width: sprite.bbox.width * zoom,
+                    height: sprite.bbox.height * zoom,
+                  }}
+                  type="button"
+                >
+                  <span className="sprite-index">{sprite.index}</span>
+                  {selected ? (
+                    <>
+                      <button
+                        aria-label={ui.resizeNorthWest}
+                        className="resize-handle nw"
+                        onPointerDown={(event) => beginResize(event, sprite.id, 'nw')}
+                        type="button"
+                      />
+                      <button
+                        aria-label={ui.resizeNorthEast}
+                        className="resize-handle ne"
+                        onPointerDown={(event) => beginResize(event, sprite.id, 'ne')}
+                        type="button"
+                      />
+                      <button
+                        aria-label={ui.resizeSouthWest}
+                        className="resize-handle sw"
+                        onPointerDown={(event) => beginResize(event, sprite.id, 'sw')}
+                        type="button"
+                      />
+                      <button
+                        aria-label={ui.resizeSouthEast}
+                        className="resize-handle se"
+                        onPointerDown={(event) => beginResize(event, sprite.id, 'se')}
+                        type="button"
+                      />
+                    </>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="empty-stage">
+            <div className="empty-stage-copy">
+              <div className="toolbar-overline">SpriteSplit</div>
+              <h2>{ui.emptyStageTitle}</h2>
+              <p>{ui.emptyStageDescription}</p>
+            </div>
+            <button className="primary" onClick={importImage} type="button">
+              {ui.selectPng}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {project ? (
+        <div className="workspace-footer">
+          <button
+            className="ghost-button"
+            onClick={() => {
+              setTool('select')
+              setSelectedIds([])
+            }}
+            type="button"
+          >
+            {ui.selectTool}
+          </button>
+          <div className="workspace-footer-copy">{ui.heroSubtitle}</div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function InspectorPanel({
+  activeSprite,
+  busyLabel,
+  chooseOutputDirectory,
+  exportSettings,
+  project,
+  providerConfig,
+  runDescriptionGeneration,
+  runExport,
+  selectedIds,
+  setExportSettings,
+  setProviderConfig,
+  setSelectedIds,
+  setSidebarTab,
+  sidebarTab,
+  ui,
+  updateProject,
+}: {
+  activeSprite: SpriteRecord | null
+  busyLabel: string
+  chooseOutputDirectory: () => void
+  exportSettings: ExportSettings
+  project: ProjectDocument | null
+  providerConfig: ProviderConfig
+  runDescriptionGeneration: (selectedOnly: boolean) => void
+  runExport: () => void
+  selectedIds: string[]
+  setExportSettings: React.Dispatch<React.SetStateAction<ExportSettings>>
+  setProviderConfig: React.Dispatch<React.SetStateAction<ProviderConfig>>
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>
+  setSidebarTab: (tab: SidebarTab) => void
+  sidebarTab: SidebarTab
+  ui: (typeof UI_TEXT)[Language]
+  updateProject: (
+    update: (draft: ProjectDocument) => ProjectDocument,
+    options?: { push?: boolean; selection?: string[] },
+  ) => void
+}) {
+  return (
+    <aside className="inspector-shell">
+      <section className="panel-card tabs-card">
+        <div className="tabs">
+          <button
+            className={sidebarTab === 'inspect' ? 'active' : ''}
+            onClick={() => setSidebarTab('inspect')}
+            type="button"
+          >
+            {ui.inspect}
+          </button>
+          <button
+            className={sidebarTab === 'ai' ? 'active' : ''}
+            onClick={() => setSidebarTab('ai')}
+            type="button"
+          >
+            {ui.ai}
+          </button>
+          <button
+            className={sidebarTab === 'export' ? 'active' : ''}
+            onClick={() => setSidebarTab('export')}
+            type="button"
+          >
+            {ui.export}
+          </button>
+        </div>
+
+        {sidebarTab === 'inspect' ? (
+          <>
             <div className="panel-header">
-              <h2>{ui.canvasToolsTitle}</h2>
-              <p>{ui.canvasToolsDescription}</p>
+              <h2>{ui.inspectorTitle}</h2>
+              <p>{ui.inspectorDescription}</p>
             </div>
-            <div className="segmented">
-              <button
-                className={tool === 'select' ? 'active' : ''}
-                onClick={() => setTool('select')}
-                type="button"
-              >
-                {ui.selectTool}
-              </button>
-              <button
-                className={tool === 'create' ? 'active' : ''}
-                onClick={() => setTool('create')}
-                type="button"
-              >
-                {ui.createBox}
-              </button>
+            {activeSprite ? (
+              <div className="inspector-fields">
+                <label>
+                  <span>{ui.name}</span>
+                  <input
+                    type="text"
+                    value={activeSprite.name}
+                    onChange={(event) =>
+                      updateSpriteField(
+                        activeSprite.id,
+                        'name',
+                        event.target.value,
+                        updateProject,
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{ui.group}</span>
+                  <input
+                    type="text"
+                    value={activeSprite.group}
+                    onChange={(event) =>
+                      updateSpriteField(
+                        activeSprite.id,
+                        'group',
+                        event.target.value,
+                        updateProject,
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{ui.tags}</span>
+                  <input
+                    type="text"
+                    value={activeSprite.tags.join(', ')}
+                    onChange={(event) =>
+                      updateSpriteField(
+                        activeSprite.id,
+                        'tags',
+                        splitTags(event.target.value),
+                        updateProject,
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{ui.description}</span>
+                  <textarea
+                    rows={4}
+                    value={activeSprite.description}
+                    onChange={(event) =>
+                      updateSpriteField(
+                        activeSprite.id,
+                        'description',
+                        event.target.value,
+                        updateProject,
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{ui.aiDescription}</span>
+                  <textarea rows={4} value={activeSprite.aiDescription} readOnly />
+                </label>
+                <div className="bbox-grid">
+                  <Metric label="X" value={activeSprite.bbox.x} />
+                  <Metric label="Y" value={activeSprite.bbox.y} />
+                  <Metric label="W" value={activeSprite.bbox.width} />
+                  <Metric label="H" value={activeSprite.bbox.height} />
+                </div>
+              </div>
+            ) : (
+              <div className="empty-message">
+                {selectedIds.length > 1
+                  ? ui.selectedSpritesMessage(selectedIds.length)
+                  : ui.selectSpriteHint}
+              </div>
+            )}
+
+            <div className="sprite-list">
+              {project?.sprites.map((sprite) => {
+                const selected = selectedIds.includes(sprite.id)
+                return (
+                  <button
+                    className={`sprite-row ${selected ? 'selected' : ''}`}
+                    key={sprite.id}
+                    onClick={(event) =>
+                      setSelectedIds(
+                        event.shiftKey
+                          ? toggleSelection(selectedIds, sprite.id)
+                          : [sprite.id],
+                      )
+                    }
+                    type="button"
+                  >
+                    <span className="sprite-row-index">{sprite.index}</span>
+                    <span className="sprite-row-copy">
+                      <strong>{sprite.name || `sprite_${sprite.index}`}</strong>
+                      <small>
+                        {ui.spriteLocation(
+                          sprite.bbox.width,
+                          sprite.bbox.height,
+                          sprite.bbox.x,
+                          sprite.bbox.y,
+                        )}
+                      </small>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            <label>
-              <span>{ui.zoom}</span>
+          </>
+        ) : null}
+
+        {sidebarTab === 'ai' ? (
+          <>
+            <div className="panel-header">
+              <h2>{ui.aiTitle}</h2>
+              <p>{ui.aiDescriptionText}</p>
+            </div>
+            <label className="inline-toggle">
               <input
-                max={4}
-                min={0.25}
-                step={0.05}
-                type="range"
-                value={zoom}
-                onChange={(event) => setZoom(Number(event.target.value))}
+                checked={providerConfig.enabled}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    enabled: event.target.checked,
+                  }))
+                }
+                type="checkbox"
               />
-              <strong>{Math.round(zoom * 100)}%</strong>
+              <span>{ui.enableAiProvider}</span>
+            </label>
+            <label>
+              <span>{ui.baseUrl}</span>
+              <input
+                type="text"
+                value={providerConfig.baseUrl}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    baseUrl: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label>
+              <span>{ui.apiKey}</span>
+              <input
+                type="password"
+                value={providerConfig.apiKey}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    apiKey: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label>
+              <span>{ui.model}</span>
+              <input
+                type="text"
+                value={providerConfig.model}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    model: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label>
+              <span>{ui.sheetPrompt}</span>
+              <textarea
+                rows={4}
+                value={providerConfig.sheetPrompt}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    sheetPrompt: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label>
+              <span>{ui.spritePrompt}</span>
+              <textarea
+                rows={4}
+                value={providerConfig.spritePrompt}
+                onChange={(event) =>
+                  setProviderConfig((current) => ({
+                    ...current,
+                    spritePrompt: event.target.value,
+                  }))
+                }
+              />
             </label>
             <div className="tool-grid">
               <button
-                disabled={selectedIds.length === 0}
-                onClick={deleteSelection}
+                disabled={!project || !!busyLabel}
+                onClick={() => runDescriptionGeneration(false)}
                 type="button"
               >
-                {ui.delete}
+                {ui.describeAll}
               </button>
               <button
-                disabled={selectedIds.length !== 1}
-                onClick={() => reorderSprite(-1)}
+                disabled={!project || selectedIds.length === 0 || !!busyLabel}
+                onClick={() => runDescriptionGeneration(true)}
                 type="button"
               >
-                {ui.moveUp}
-              </button>
-              <button
-                disabled={selectedIds.length !== 1}
-                onClick={() => reorderSprite(1)}
-                type="button"
-              >
-                {ui.moveDown}
+                {ui.describeSelected}
               </button>
             </div>
-          </section>
-        </aside>
+            {project?.sheetContext ? (
+              <div className="context-box">
+                <strong>{ui.sheetContext}</strong>
+                <p>{project.sheetContext}</p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
-        <section className="stage-panel">
-          <div className="stage-frame">
-            {project && previewUrl ? (
-              <div
-                className={`stage ${tool === 'create' ? 'create-mode' : ''}`}
-                ref={stageRef}
-                onPointerDown={handleStagePointerDown}
-                style={{ width: stageWidth, height: stageHeight }}
-              >
-                <img
-                  alt={project.sourceImageName}
-                  className="source-image"
-                  draggable={false}
-                  src={previewUrl}
-                  style={{ width: stageWidth, height: stageHeight }}
+        {sidebarTab === 'export' ? (
+          <>
+            <div className="panel-header">
+              <h2>{ui.exportTitle}</h2>
+              <p>{ui.exportDescription}</p>
+            </div>
+            <label>
+              <span>{ui.outputDirectory}</span>
+              <div className="path-row">
+                <input readOnly type="text" value={exportSettings.outputDir} />
+                <button onClick={chooseOutputDirectory} type="button">
+                  {ui.browse}
+                </button>
+              </div>
+            </label>
+            <label className="inline-toggle">
+              <input
+                checked={exportSettings.exportCrops}
+                onChange={(event) =>
+                  setExportSettings((current) => ({
+                    ...current,
+                    exportCrops: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              <span>{ui.exportCrops}</span>
+            </label>
+            <label className="inline-toggle">
+              <input
+                checked={exportSettings.normalizeCanvas}
+                onChange={(event) =>
+                  setExportSettings((current) => ({
+                    ...current,
+                    normalizeCanvas: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              <span>{ui.normalizeCanvas}</span>
+            </label>
+            <div className="two-col">
+              <label>
+                <span>{ui.canvasWidth}</span>
+                <input
+                  min={0}
+                  type="number"
+                  value={exportSettings.canvasWidth}
+                  onChange={(event) =>
+                    setExportSettings((current) => ({
+                      ...current,
+                      canvasWidth: Number(event.target.value),
+                    }))
+                  }
                 />
-                {project.sprites.map((sprite) => {
-                  const selected = selectedIds.includes(sprite.id)
-                  return (
-                    <button
-                      key={sprite.id}
-                      className={`sprite-box ${selected ? 'selected' : ''}`}
-                      onPointerDown={(event) =>
-                        beginDragSelection(event, sprite.id)
-                      }
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        beginMove(sprite.id, event.shiftKey)
-                      }}
-                      style={{
-                        left: sprite.bbox.x * zoom,
-                        top: sprite.bbox.y * zoom,
-                        width: sprite.bbox.width * zoom,
-                        height: sprite.bbox.height * zoom,
-                      }}
-                      type="button"
-                    >
-                        <span className="sprite-index">{sprite.index}</span>
-                      {selected ? (
-                        <>
-                          <button
-                            aria-label={ui.resizeNorthWest}
-                            className="resize-handle nw"
-                            onPointerDown={(event) =>
-                              beginResize(event, sprite.id, 'nw')
-                            }
-                            type="button"
-                          />
-                          <button
-                            aria-label={ui.resizeNorthEast}
-                            className="resize-handle ne"
-                            onPointerDown={(event) =>
-                              beginResize(event, sprite.id, 'ne')
-                            }
-                            type="button"
-                          />
-                          <button
-                            aria-label={ui.resizeSouthWest}
-                            className="resize-handle sw"
-                            onPointerDown={(event) =>
-                              beginResize(event, sprite.id, 'sw')
-                            }
-                            type="button"
-                          />
-                          <button
-                            aria-label={ui.resizeSouthEast}
-                            className="resize-handle se"
-                            onPointerDown={(event) =>
-                              beginResize(event, sprite.id, 'se')
-                            }
-                            type="button"
-                          />
-                        </>
-                      ) : null}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="empty-stage">
-                <h2>{ui.emptyStageTitle}</h2>
-                <p>{ui.emptyStageDescription}</p>
-                <button className="primary" onClick={importImage} type="button">
-                  {ui.selectPng}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <aside className="inspector-panel">
-          <section className="panel-card tabs-card">
-            <div className="tabs">
-              <button
-                className={sidebarTab === 'inspect' ? 'active' : ''}
-                onClick={() => setSidebarTab('inspect')}
-                type="button"
-              >
-                {ui.inspect}
-              </button>
-              <button
-                className={sidebarTab === 'ai' ? 'active' : ''}
-                onClick={() => setSidebarTab('ai')}
-                type="button"
-              >
-                {ui.ai}
-              </button>
-              <button
-                className={sidebarTab === 'export' ? 'active' : ''}
-                onClick={() => setSidebarTab('export')}
-                type="button"
-              >
-                {ui.export}
-              </button>
+              </label>
+              <label>
+                <span>{ui.canvasHeight}</span>
+                <input
+                  min={0}
+                  type="number"
+                  value={exportSettings.canvasHeight}
+                  onChange={(event) =>
+                    setExportSettings((current) => ({
+                      ...current,
+                      canvasHeight: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
             </div>
+            <label className="inline-toggle">
+              <input
+                checked={exportSettings.includeJson}
+                onChange={(event) =>
+                  setExportSettings((current) => ({
+                    ...current,
+                    includeJson: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              <span>{ui.writeJson}</span>
+            </label>
+            <label className="inline-toggle">
+              <input
+                checked={exportSettings.includeCsv}
+                onChange={(event) =>
+                  setExportSettings((current) => ({
+                    ...current,
+                    includeCsv: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              <span>{ui.writeCsv}</span>
+            </label>
+            <button
+              className="primary"
+              disabled={!project || !!busyLabel}
+              onClick={runExport}
+              type="button"
+            >
+              {ui.exportProject}
+            </button>
+          </>
+        ) : null}
+      </section>
 
-            {sidebarTab === 'inspect' ? (
-              <>
-                <div className="panel-header">
-                  <h2>{ui.inspectorTitle}</h2>
-                  <p>{ui.inspectorDescription}</p>
-                </div>
-                {activeSprite ? (
-                  <div className="inspector-fields">
-                    <label>
-                      <span>{ui.name}</span>
-                      <input
-                        type="text"
-                        value={activeSprite.name}
-                        onChange={(event) =>
-                          updateSpriteField(
-                            activeSprite.id,
-                            'name',
-                            event.target.value,
-                            updateProject,
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{ui.group}</span>
-                      <input
-                        type="text"
-                        value={activeSprite.group}
-                        onChange={(event) =>
-                          updateSpriteField(
-                            activeSprite.id,
-                            'group',
-                            event.target.value,
-                            updateProject,
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{ui.tags}</span>
-                      <input
-                        type="text"
-                        value={activeSprite.tags.join(', ')}
-                        onChange={(event) =>
-                          updateSpriteField(
-                            activeSprite.id,
-                            'tags',
-                            splitTags(event.target.value),
-                            updateProject,
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{ui.description}</span>
-                      <textarea
-                        rows={4}
-                        value={activeSprite.description}
-                        onChange={(event) =>
-                          updateSpriteField(
-                            activeSprite.id,
-                            'description',
-                            event.target.value,
-                            updateProject,
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{ui.aiDescription}</span>
-                      <textarea
-                        rows={4}
-                        value={activeSprite.aiDescription}
-                        readOnly
-                      />
-                    </label>
-                    <div className="bbox-grid">
-                      <Metric label="X" value={activeSprite.bbox.x} />
-                      <Metric label="Y" value={activeSprite.bbox.y} />
-                      <Metric label="W" value={activeSprite.bbox.width} />
-                      <Metric label="H" value={activeSprite.bbox.height} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty-message">
-                    {selectedIds.length > 1
-                      ? ui.selectedSpritesMessage(selectedIds.length)
-                      : ui.selectSpriteHint}
-                  </div>
-                )}
-
-                <div className="sprite-list">
-                  {project?.sprites.map((sprite) => {
-                    const selected = selectedIds.includes(sprite.id)
-                    return (
-                      <button
-                        className={`sprite-row ${selected ? 'selected' : ''}`}
-                        key={sprite.id}
-                        onClick={(event) =>
-                          setSelectedIds(
-                            event.shiftKey
-                              ? toggleSelection(selectedIds, sprite.id)
-                              : [sprite.id],
-                          )
-                        }
-                        type="button"
-                      >
-                        <span className="sprite-row-index">{sprite.index}</span>
-                        <span className="sprite-row-copy">
-                          <strong>{sprite.name || `sprite_${sprite.index}`}</strong>
-                          <small>
-                            {ui.spriteLocation(
-                              sprite.bbox.width,
-                              sprite.bbox.height,
-                              sprite.bbox.x,
-                              sprite.bbox.y,
-                            )}
-                          </small>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            ) : null}
-
-            {sidebarTab === 'ai' ? (
-              <>
-                <div className="panel-header">
-                  <h2>{ui.aiTitle}</h2>
-                  <p>{ui.aiDescriptionText}</p>
-                </div>
-                <label className="inline-toggle">
-                  <input
-                    checked={providerConfig.enabled}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        enabled: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{ui.enableAiProvider}</span>
-                </label>
-                <label>
-                  <span>{ui.baseUrl}</span>
-                  <input
-                    type="text"
-                    value={providerConfig.baseUrl}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        baseUrl: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>{ui.apiKey}</span>
-                  <input
-                    type="password"
-                    value={providerConfig.apiKey}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        apiKey: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>{ui.model}</span>
-                  <input
-                    type="text"
-                    value={providerConfig.model}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        model: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>{ui.sheetPrompt}</span>
-                  <textarea
-                    rows={4}
-                    value={providerConfig.sheetPrompt}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        sheetPrompt: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>{ui.spritePrompt}</span>
-                  <textarea
-                    rows={4}
-                    value={providerConfig.spritePrompt}
-                    onChange={(event) =>
-                      setProviderConfig((current) => ({
-                        ...current,
-                        spritePrompt: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <div className="tool-grid">
-                  <button
-                    disabled={!project || !!busyLabel}
-                    onClick={() => runDescriptionGeneration(false)}
-                    type="button"
-                  >
-                    {ui.describeAll}
-                  </button>
-                  <button
-                    disabled={!project || selectedIds.length === 0 || !!busyLabel}
-                    onClick={() => runDescriptionGeneration(true)}
-                    type="button"
-                  >
-                    {ui.describeSelected}
-                  </button>
-                </div>
-                {project?.sheetContext ? (
-                  <div className="context-box">
-                    <strong>{ui.sheetContext}</strong>
-                    <p>{project.sheetContext}</p>
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
-            {sidebarTab === 'export' ? (
-              <>
-                <div className="panel-header">
-                  <h2>{ui.exportTitle}</h2>
-                  <p>{ui.exportDescription}</p>
-                </div>
-                <label>
-                  <span>{ui.outputDirectory}</span>
-                  <div className="path-row">
-                    <input readOnly type="text" value={exportSettings.outputDir} />
-                    <button onClick={chooseOutputDirectory} type="button">
-                      {ui.browse}
-                    </button>
-                  </div>
-                </label>
-                <label className="inline-toggle">
-                  <input
-                    checked={exportSettings.exportCrops}
-                    onChange={(event) =>
-                      setExportSettings((current) => ({
-                        ...current,
-                        exportCrops: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{ui.exportCrops}</span>
-                </label>
-                <label className="inline-toggle">
-                  <input
-                    checked={exportSettings.normalizeCanvas}
-                    onChange={(event) =>
-                      setExportSettings((current) => ({
-                        ...current,
-                        normalizeCanvas: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{ui.normalizeCanvas}</span>
-                </label>
-                <div className="two-col">
-                  <label>
-                    <span>{ui.canvasWidth}</span>
-                    <input
-                      min={0}
-                      type="number"
-                      value={exportSettings.canvasWidth}
-                      onChange={(event) =>
-                        setExportSettings((current) => ({
-                          ...current,
-                          canvasWidth: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                  <label>
-                    <span>{ui.canvasHeight}</span>
-                    <input
-                      min={0}
-                      type="number"
-                      value={exportSettings.canvasHeight}
-                      onChange={(event) =>
-                        setExportSettings((current) => ({
-                          ...current,
-                          canvasHeight: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
-                <label className="inline-toggle">
-                  <input
-                    checked={exportSettings.includeJson}
-                    onChange={(event) =>
-                      setExportSettings((current) => ({
-                        ...current,
-                        includeJson: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{ui.writeJson}</span>
-                </label>
-                <label className="inline-toggle">
-                  <input
-                    checked={exportSettings.includeCsv}
-                    onChange={(event) =>
-                      setExportSettings((current) => ({
-                        ...current,
-                        includeCsv: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{ui.writeCsv}</span>
-                </label>
-                <button
-                  className="primary"
-                  disabled={!project || !!busyLabel}
-                  onClick={runExport}
-                  type="button"
-                >
-                  {ui.exportProject}
-                </button>
-              </>
-            ) : null}
-          </section>
-
-          {project?.warnings?.length ? (
-            <section className="panel-card warnings-card">
-              <div className="panel-header">
-                <h2>{ui.warningsTitle}</h2>
-                <p>{ui.warningsDescription}</p>
-              </div>
-              <ul className="warning-list">
-                {project.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </aside>
-      </main>
-    </div>
+      {project?.warnings?.length ? (
+        <section className="panel-card warnings-card">
+          <div className="panel-header">
+            <h2>{ui.warningsTitle}</h2>
+            <p>{ui.warningsDescription}</p>
+          </div>
+          <ul className="warning-list">
+            {project.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </aside>
   )
 }
 

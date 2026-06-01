@@ -1,36 +1,51 @@
 :root {
-  color: #2c2217;
+  color: #edf2f7;
   background:
-    radial-gradient(circle at top, rgba(255, 238, 209, 0.9), transparent 36%),
-    linear-gradient(180deg, #fffaf2 0%, #f7f1e6 42%, #efe6d8 100%);
+    radial-gradient(circle at top, rgba(46, 89, 150, 0.2), transparent 28%),
+    linear-gradient(180deg, #10141a 0%, #0c1015 56%, #090c10 100%);
   font-family:
-    'Segoe UI Variable Display',
-    'Trebuchet MS',
-    'Avenir Next',
+    'Segoe UI Variable Text',
+    'Segoe UI',
+    'Inter',
+    'Helvetica Neue',
+    Arial,
     sans-serif;
-  line-height: 1.5;
+  line-height: 1.45;
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --ink-hard: #2c2217;
-  --ink-soft: #74614d;
-  --accent: #ff7a3d;
-  --accent-dark: #e45b1f;
-  --teal: #2494ac;
-  --teal-dark: #0b6477;
-  --paper: rgba(255, 253, 248, 0.95);
+  --bg-root: #0b0f14;
+  --bg-panel: #121820;
+  --bg-elevated: #181f29;
+  --border-strong: rgba(255, 255, 255, 0.08);
+  --text-bright: #edf2f7;
+  --text-soft: #a5b0bd;
+  --text-muted: #778190;
+  --accent: #4288d8;
+  --accent-strong: #2f6db9;
+  --panel-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100vh;
+}
+
 body {
   margin: 0;
   min-width: 320px;
+  color: var(--text-bright);
+  background:
+    radial-gradient(circle at top, rgba(46, 89, 150, 0.18), transparent 26%),
+    linear-gradient(180deg, #10141a 0%, #0c1015 56%, #090c10 100%);
 }
 
 button,
@@ -41,53 +56,61 @@ select {
 }
 
 button {
-  border: 1px solid rgba(161, 110, 31, 0.18);
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--ink-hard);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-bright);
+  border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
   transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 
 button:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(255, 120, 60, 0.36);
-  box-shadow: 0 8px 18px rgba(44, 34, 23, 0.08);
+  border-color: rgba(123, 188, 255, 0.24);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.45;
+  transform: none;
+  box-shadow: none;
 }
 
 button.primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: #fff;
-  border-color: transparent;
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  color: #f8fbff;
+  border-color: rgba(114, 175, 255, 0.22);
 }
 
 input,
 textarea,
 select {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid rgba(161, 110, 31, 0.16);
-  padding: 11px 12px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink-hard);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-bright);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6f7885;
 }
 
 input:focus,
 textarea:focus,
 select:focus,
 button:focus-visible {
-  outline: 2px solid rgba(36, 148, 172, 0.44);
-  outline-offset: 2px;
+  outline: 2px solid rgba(123, 188, 255, 0.36);
+  outline-offset: 1px;
 }
 
 textarea {
@@ -99,18 +122,4 @@ h2,
 h3,
 p {
   margin-top: 0;
-}
-
-h1 {
-  font-family:
-    'Avenir Next Condensed',
-    'Franklin Gothic Medium',
-    sans-serif;
-  font-size: clamp(2.6rem, 4vw, 4.4rem);
-  line-height: 0.98;
-  letter-spacing: -0.04em;
-}
-
-#root {
-  min-height: 100vh;
 }
