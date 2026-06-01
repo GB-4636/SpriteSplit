@@ -1,0 +1,116 @@
+:root {
+  color: #2c2217;
+  background:
+    radial-gradient(circle at top, rgba(255, 238, 209, 0.9), transparent 36%),
+    linear-gradient(180deg, #fffaf2 0%, #f7f1e6 42%, #efe6d8 100%);
+  font-family:
+    'Segoe UI Variable Display',
+    'Trebuchet MS',
+    'Avenir Next',
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ink-hard: #2c2217;
+  --ink-soft: #74614d;
+  --accent: #ff7a3d;
+  --accent-dark: #e45b1f;
+  --teal: #2494ac;
+  --teal-dark: #0b6477;
+  --paper: rgba(255, 253, 248, 0.95);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 1px solid rgba(161, 110, 31, 0.18);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink-hard);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 120, 60, 0.36);
+  box-shadow: 0 8px 18px rgba(44, 34, 23, 0.08);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+button.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  border-color: transparent;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(161, 110, 31, 0.16);
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-hard);
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid rgba(36, 148, 172, 0.44);
+  outline-offset: 2px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-family:
+    'Avenir Next Condensed',
+    'Franklin Gothic Medium',
+    sans-serif;
+  font-size: clamp(2.6rem, 4vw, 4.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+#root {
+  min-height: 100vh;
+}
