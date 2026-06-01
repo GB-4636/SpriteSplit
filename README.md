@@ -123,6 +123,69 @@ Each sprite record contains:
 - `group`
 - `cropPath`
 
+## Use cases
+
+### Game asset cleanup
+
+You generated a sprite sheet with Midjourney, Stable Diffusion, or another image AI. The output is a single PNG with sprites arranged in roughly even rows and columns, but the exact pixel positions are irregular. SpriteSplit detects each sprite region from transparency, lets you visually confirm and adjust bounding boxes, and exports clean crops at uniform canvas size — ready for your game engine.
+
+### Rapid asset cataloging
+
+You have a large collection of existing sprite sheets that need structured metadata (names, descriptions, groups, tags). Import each sheet, let the alpha detector identify sprites, run AI Naming to auto-generate developer-friendly asset names and descriptions, then export JSON/CSV for your asset pipeline.
+
+### Sprite sheet auditing
+
+Before shipping or integrating assets, you need to verify that every sprite in a sheet has a valid bounding box, no overlaps, and proper naming. Use the visual editor to quickly scan, select, reorder, rename, and delete problem sprites — then export the corrected project file.
+
+### AI art-to-game-asset pipeline
+
+When prototyping a game with AI-generated art, you need a repeatable workflow: generate → detect → clean → export. SpriteSplit fills the "detect and clean" step with minimal manual effort, letting you focus on game development rather than pixel-level editing.
+
+## How to use
+
+### 1. Import a sprite sheet
+
+Click **Import PNG** or drag-and-drop a transparent PNG onto the canvas. SpriteSplit will automatically run alpha-threshold detection and populate the sprite list.
+
+### 2. Adjust detection settings
+
+In the left panel under **Detection**:
+- **Alpha threshold** — controls what pixel opacity counts as "content" (higher = fewer detected regions)
+- **Minimum region area** — filters out tiny specks below a pixel threshold
+- **Sort mode** — reorder sprites by row or column priority
+
+Click **Re-run Detection** to apply updated settings.
+
+### 3. Edit sprites visually
+
+Use the canvas tools in the left panel:
+- **Select** — click to select, Shift+click for multi-select
+- **Create Box** — drag on the canvas to draw a new sprite region
+- **Move** — drag selected sprites to reposition their bounding boxes
+- **Resize** — drag corner handles to adjust box dimensions
+
+In the sprite list:
+- **Move Up / Move Down** — reorder sprites
+- **Delete** — remove selected sprites
+
+### 4. Name and describe sprites
+
+Select a single sprite in the right panel's **Inspect** tab to manually edit name, group, tags, and description.
+
+For batch naming, open the **AI** tab:
+1. Enable the AI provider and fill in Base URL, API Key, and Model
+2. Optionally paste the original generation prompt (used as naming context)
+3. Click **Name All** or **Name Selected** to generate asset names and descriptions via AI
+
+AI responses are cached by image hash + bbox + prompt, so re-running is fast.
+
+### 5. Export
+
+In the right panel's **Export** tab:
+1. Choose an output directory
+2. Toggle options: cropped PNGs, normalized canvas, JSON manifest, CSV summary
+3. Click **Export Project**
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
