@@ -27,6 +27,26 @@ import type {
 type ToolMode = 'select' | 'create'
 type SidebarTab = 'inspect' | 'ai' | 'export'
 type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se'
+type Language = 'en' | 'zh'
+type BusyState = '' | 'analyzing' | 'rerunning' | 'describing' | 'exporting'
+
+type StatusState =
+  | { key: 'idle' }
+  | { key: 'runningDetection' }
+  | { key: 'detected'; count: number }
+  | { key: 'refreshed'; alphaThreshold: number; minArea: number }
+  | { key: 'describedSelected'; count: number }
+  | { key: 'describedAll' }
+  | { key: 'undo' }
+  | { key: 'redo' }
+  | { key: 'deleted'; count: number }
+  | { key: 'moveUp' }
+  | { key: 'moveDown' }
+  | { key: 'ignoredTinyDraft' }
+  | { key: 'createdBox' }
+  | { key: 'movedBoxes' }
+  | { key: 'resizedBox' }
+  | { key: 'exported'; result: ExportResult }
 
 type InteractionState =
   | {
@@ -76,7 +96,244 @@ const defaultExportSettings: ExportSettings = {
   includeCsv: true,
 }
 
+const LANGUAGE_STORAGE_KEY = 'spritesplit-language'
+
+const UI_TEXT = {
+  en: {
+    pageTitle: 'SpriteSplit',
+    heroTitle: 'AI sprite cleanup workbench',
+    heroSubtitle:
+      'Detect irregularly placed sprites, correct boxes visually, add AI descriptions, and export metadata or normalized crops.',
+    languageLabel: 'Language',
+    languageEnglish: 'English',
+    languageChinese: '中文',
+    importPng: 'Import PNG',
+    selectPng: 'Select PNG',
+    rerunDetection: 'Re-run Detection',
+    undo: 'Undo',
+    redo: 'Redo',
+    statusLabel: 'Status:',
+    spritesCount: (count: number) => `${count} sprites`,
+    detectionTitle: 'Detection',
+    detectionDescription: 'Alpha thresholding and connected-component grouping.',
+    alphaThreshold: 'Alpha threshold',
+    minRegionArea: 'Minimum region area',
+    sortMode: 'Sort mode',
+    sortTopToBottom: 'Top to bottom, then left to right',
+    sortLeftToRight: 'Left to right, then top to bottom',
+    originalPrompt: 'Original generation prompt',
+    originalPromptPlaceholder:
+      'Paste the prompt you used to generate this sheet. It will be saved with the project and can guide AI naming.',
+    canvasToolsTitle: 'Canvas Tools',
+    canvasToolsDescription: 'Choose a tool, then edit boxes directly on the image.',
+    selectTool: 'Select',
+    createBox: 'Create Box',
+    zoom: 'Zoom',
+    delete: 'Delete',
+    moveUp: 'Move Up',
+    moveDown: 'Move Down',
+    resizeNorthWest: 'Resize north west',
+    resizeNorthEast: 'Resize north east',
+    resizeSouthWest: 'Resize south west',
+    resizeSouthEast: 'Resize south east',
+    emptyStageTitle: 'Drop in a sprite sheet to start',
+    emptyStageDescription:
+      'SpriteSplit is tuned for transparent PNG sprite sheets from AI image generation workflows.',
+    inspect: 'Inspect',
+    ai: 'AI',
+    export: 'Export',
+    inspectorTitle: 'Sprite Inspector',
+    inspectorDescription:
+      'Select a single sprite to edit fields, or shift-click for multi-select on the canvas or list.',
+    name: 'Name',
+    group: 'Group',
+    tags: 'Tags',
+    description: 'Description',
+    aiDescription: 'AI Description',
+    selectedSpritesMessage: (count: number) =>
+      `${count} sprites selected. Use the canvas tools or the list below.`,
+    selectSpriteHint: 'Select a sprite box to inspect or edit it.',
+    spriteLocation: (width: number, height: number, x: number, y: number) =>
+      `${width}×${height} at ${x}, ${y}`,
+    aiTitle: 'AI Descriptions',
+    aiDescriptionText:
+      'Use an OpenAI-compatible vision endpoint. Descriptions are cached by image hash, bbox, prompt, and model settings.',
+    enableAiProvider: 'Enable AI provider',
+    baseUrl: 'Base URL',
+    apiKey: 'API key',
+    model: 'Model',
+    sheetPrompt: 'Sheet prompt',
+    spritePrompt: 'Sprite prompt',
+    describeAll: 'Describe All',
+    describeSelected: 'Describe Selected',
+    sheetContext: 'Sheet context',
+    exportTitle: 'Export',
+    exportDescription:
+      'Export metadata only, or metadata plus normalized crops for downstream game workflows.',
+    outputDirectory: 'Output directory',
+    browse: 'Browse',
+    exportCrops: 'Export cropped PNG sprites',
+    normalizeCanvas: 'Center crops on a uniform canvas',
+    canvasWidth: 'Canvas width',
+    canvasHeight: 'Canvas height',
+    writeJson: 'Write JSON manifest',
+    writeCsv: 'Write CSV summary',
+    exportProject: 'Export Project',
+    warningsTitle: 'Warnings',
+    warningsDescription: 'Non-blocking issues and skipped steps are recorded here.',
+    pngSpriteSheets: 'PNG Sprite Sheets',
+    runtimeRequired: 'The desktop runtime is required for file import.',
+    chooseOutputDirFirst: 'Choose an output directory before exporting.',
+    fallbackError: 'Something went wrong.',
+    exportJsonManifest: 'JSON manifest',
+    exportCsvSummary: 'CSV summary',
+    exportCropsCount: (count: number) => `${count} crop(s)`,
+    exportStatus: (parts: string, target: string) => `Exported ${parts} to ${target}.`,
+    statusIdle: 'Import a PNG sprite image to begin detection and editing.',
+    statusRunningDetection: 'Running alpha-based detection...',
+    statusDetected: (count: number) =>
+      `Detected ${count} sprite region(s). You can now refine boxes, naming, and export settings.`,
+    statusRefreshed: (alphaThreshold: number, minArea: number) =>
+      `Detection refreshed with alpha threshold ${alphaThreshold} and minimum area ${minArea}.`,
+    statusDescribedSelected: (count: number) =>
+      `AI descriptions updated for ${count} selected sprite(s).`,
+    statusDescribedAll: 'AI descriptions updated for the full sheet.',
+    statusUndo: 'Undid the last project edit.',
+    statusRedo: 'Redid the next project edit.',
+    statusDeleted: (count: number) => `Deleted ${count} sprite box(es).`,
+    statusMoveUp: 'Moved sprite up.',
+    statusMoveDown: 'Moved sprite down.',
+    statusIgnoredTinyDraft: 'Ignored a tiny draft box. Drag a bit more to create one.',
+    statusCreatedBox: 'Created a new sprite box.',
+    statusMovedBoxes: 'Moved selected sprite box(es).',
+    statusResizedBox: 'Resized sprite box.',
+    busyAnalyzing: 'Analyzing sprite sheet...',
+    busyRerunning: 'Re-running detection...',
+    busyDescribing: 'Generating AI descriptions...',
+    busyExporting: 'Exporting project...',
+  },
+  zh: {
+    pageTitle: 'SpriteSplit',
+    heroTitle: 'AI 精灵图清理工作台',
+    heroSubtitle:
+      '检测摆放不规则的精灵，直接在画布上修正框选，补充 AI 描述，并导出元数据或统一尺寸裁剪图。',
+    languageLabel: '语言',
+    languageEnglish: 'English',
+    languageChinese: '中文',
+    importPng: '导入 PNG',
+    selectPng: '选择 PNG',
+    rerunDetection: '重新检测',
+    undo: '撤销',
+    redo: '重做',
+    statusLabel: '状态：',
+    spritesCount: (count: number) => `${count} 个精灵`,
+    detectionTitle: '检测',
+    detectionDescription: '基于 Alpha 阈值与连通区域分组进行检测。',
+    alphaThreshold: 'Alpha 阈值',
+    minRegionArea: '最小区域面积',
+    sortMode: '排序方式',
+    sortTopToBottom: '先从上到下，再从左到右',
+    sortLeftToRight: '先从左到右，再从上到下',
+    originalPrompt: '原始生成提示词',
+    originalPromptPlaceholder:
+      '粘贴你生成这张精灵图时使用的提示词。它会随项目保存，也可以辅助 AI 命名。',
+    canvasToolsTitle: '画布工具',
+    canvasToolsDescription: '选择一个工具后，直接在图片上编辑框选区域。',
+    selectTool: '选择',
+    createBox: '创建框选',
+    zoom: '缩放',
+    delete: '删除',
+    moveUp: '上移',
+    moveDown: '下移',
+    resizeNorthWest: '向左上调整大小',
+    resizeNorthEast: '向右上调整大小',
+    resizeSouthWest: '向左下调整大小',
+    resizeSouthEast: '向右下调整大小',
+    emptyStageTitle: '导入精灵图后开始',
+    emptyStageDescription: 'SpriteSplit 适合处理带透明通道的 PNG 精灵图，尤其是 AI 生成的图集。',
+    inspect: '检查',
+    ai: 'AI',
+    export: '导出',
+    inspectorTitle: '精灵检查器',
+    inspectorDescription: '选中单个精灵可编辑字段；在画布或列表中按住 Shift 可多选。',
+    name: '名称',
+    group: '分组',
+    tags: '标签',
+    description: '描述',
+    aiDescription: 'AI 描述',
+    selectedSpritesMessage: (count: number) =>
+      `已选择 ${count} 个精灵。可使用画布工具或下方列表继续操作。`,
+    selectSpriteHint: '选择一个精灵框即可查看或编辑。',
+    spriteLocation: (width: number, height: number, x: number, y: number) =>
+      `${width}×${height}，位置 ${x}, ${y}`,
+    aiTitle: 'AI 描述',
+    aiDescriptionText:
+      '使用兼容 OpenAI 的视觉接口。描述结果会根据图像哈希、边界框、提示词和模型设置缓存。',
+    enableAiProvider: '启用 AI 提供方',
+    baseUrl: 'Base URL',
+    apiKey: 'API Key',
+    model: '模型',
+    sheetPrompt: '整张图提示词',
+    spritePrompt: '单精灵提示词',
+    describeAll: '描述全部',
+    describeSelected: '描述选中项',
+    sheetContext: '整张图上下文',
+    exportTitle: '导出',
+    exportDescription: '可只导出元数据，或连同统一尺寸裁剪图一起导出，用于后续游戏资源流程。',
+    outputDirectory: '输出目录',
+    browse: '浏览',
+    exportCrops: '导出裁剪后的 PNG 精灵',
+    normalizeCanvas: '将裁剪图居中到统一画布',
+    canvasWidth: '画布宽度',
+    canvasHeight: '画布高度',
+    writeJson: '写入 JSON 清单',
+    writeCsv: '写入 CSV 摘要',
+    exportProject: '导出项目',
+    warningsTitle: '警告',
+    warningsDescription: '这里会记录不阻塞流程的问题和被跳过的步骤。',
+    pngSpriteSheets: 'PNG 精灵图',
+    runtimeRequired: '导入文件需要桌面运行时环境。',
+    chooseOutputDirFirst: '导出前请先选择输出目录。',
+    fallbackError: '发生了一些问题。',
+    exportJsonManifest: 'JSON 清单',
+    exportCsvSummary: 'CSV 摘要',
+    exportCropsCount: (count: number) => `${count} 个裁剪图`,
+    exportStatus: (parts: string, target: string) => `已导出 ${parts} 到 ${target}。`,
+    statusIdle: '导入一张 PNG 精灵图后即可开始检测和编辑。',
+    statusRunningDetection: '正在执行基于 Alpha 的检测...',
+    statusDetected: (count: number) =>
+      `已检测到 ${count} 个精灵区域。现在可以继续微调框选、命名和导出设置。`,
+    statusRefreshed: (alphaThreshold: number, minArea: number) =>
+      `检测已刷新，当前 Alpha 阈值为 ${alphaThreshold}，最小面积为 ${minArea}。`,
+    statusDescribedSelected: (count: number) =>
+      `已为 ${count} 个选中精灵更新 AI 描述。`,
+    statusDescribedAll: '已为整张精灵图更新 AI 描述。',
+    statusUndo: '已撤销上一次项目编辑。',
+    statusRedo: '已重做下一步项目编辑。',
+    statusDeleted: (count: number) => `已删除 ${count} 个精灵框。`,
+    statusMoveUp: '已将精灵上移。',
+    statusMoveDown: '已将精灵下移。',
+    statusIgnoredTinyDraft: '已忽略过小的草稿框。拖拽更大一点即可创建。',
+    statusCreatedBox: '已创建新的精灵框。',
+    statusMovedBoxes: '已移动选中的精灵框。',
+    statusResizedBox: '已调整精灵框大小。',
+    busyAnalyzing: '正在分析精灵图...',
+    busyRerunning: '正在重新检测...',
+    busyDescribing: '正在生成 AI 描述...',
+    busyExporting: '正在导出项目...',
+  },
+} as const
+
+function getStoredLanguage(): Language {
+  if (typeof window === 'undefined') {
+    return 'en'
+  }
+  const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+  return stored === 'zh' ? 'zh' : 'en'
+}
+
 function App() {
+  const [language, setLanguage] = useState<Language>(getStoredLanguage)
   const [project, setProject] = useState<ProjectDocument | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -92,19 +349,26 @@ function App() {
     index: number
   }>({ entries: [], index: -1 })
   const [interaction, setInteraction] = useState<InteractionState | null>(null)
-  const [status, setStatus] = useState(
-    'Import a PNG sprite image to begin detection and editing.',
-  )
+  const [status, setStatus] = useState<StatusState>({ key: 'idle' })
   const [error, setError] = useState('')
-  const [busyLabel, setBusyLabel] = useState('')
+  const [busyState, setBusyState] = useState<BusyState>('')
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const projectRef = useRef<ProjectDocument | null>(null)
   const draftIdRef = useRef(1)
+  const ui = UI_TEXT[language]
+  const busyLabel = formatBusyLabel(busyState, ui)
+  const statusLabel = formatStatus(status, ui)
 
   useEffect(() => {
     projectRef.current = project
   }, [project])
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en'
+    document.title = ui.pageTitle
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+  }, [language, ui.pageTitle])
 
   const activeSprite =
     selectedIds.length === 1
@@ -164,7 +428,7 @@ function App() {
 
   const importImage = async () => {
     if (!isTauriRuntime()) {
-      setError('The desktop runtime is required for file import.')
+      setError(ui.runtimeRequired)
       return
     }
 
@@ -172,7 +436,7 @@ function App() {
       multiple: false,
       filters: [
         {
-          name: 'PNG Sprite Sheets',
+          name: ui.pngSpriteSheets,
           extensions: ['png'],
         },
       ],
@@ -183,8 +447,8 @@ function App() {
     }
 
     setError('')
-    setBusyLabel('Analyzing sprite sheet...')
-    setStatus('Running alpha-based detection...')
+    setBusyState('analyzing')
+    setStatus({ key: 'runningDetection' })
 
     try {
       const nextProject = await analyzeImage({
@@ -201,13 +465,11 @@ function App() {
         ...current,
         outputDir: current.outputDir || deriveDefaultExportDir(chosen),
       }))
-      setStatus(
-        `Detected ${nextProject.sprites.length} sprite region(s). You can now refine boxes, naming, and export settings.`,
-      )
+      setStatus({ key: 'detected', count: nextProject.sprites.length })
     } catch (caught) {
-      setError(asErrorMessage(caught))
+      setError(asErrorMessage(caught, ui.fallbackError))
     } finally {
-      setBusyLabel('')
+      setBusyState('')
     }
   }
 
@@ -218,7 +480,7 @@ function App() {
     }
 
     setError('')
-    setBusyLabel('Re-running detection...')
+    setBusyState('rerunning')
     try {
       const nextProject = await analyzeImage({
         imagePath: current.sourceImagePath,
@@ -230,13 +492,15 @@ function App() {
         selection: nextProject.sprites[0] ? [nextProject.sprites[0].id] : [],
       })
       setPreviewUrl(filePathToUrl(current.sourceImagePath))
-      setStatus(
-        `Detection refreshed with alpha threshold ${current.detectionSettings.alphaThreshold} and minimum area ${current.detectionSettings.minArea}.`,
-      )
+      setStatus({
+        key: 'refreshed',
+        alphaThreshold: current.detectionSettings.alphaThreshold,
+        minArea: current.detectionSettings.minArea,
+      })
     } catch (caught) {
-      setError(asErrorMessage(caught))
+      setError(asErrorMessage(caught, ui.fallbackError))
     } finally {
-      setBusyLabel('')
+      setBusyState('')
     }
   }
 
@@ -260,7 +524,7 @@ function App() {
     }
 
     setError('')
-    setBusyLabel('Generating AI descriptions...')
+    setBusyState('describing')
     try {
       const nextProject = await generateDescriptions(current, {
         ...providerConfig,
@@ -272,13 +536,13 @@ function App() {
       })
       setStatus(
         selectedOnly
-          ? `AI descriptions updated for ${selectedIds.length} selected sprite(s).`
-          : 'AI descriptions updated for the full sheet.',
+          ? { key: 'describedSelected', count: selectedIds.length }
+          : { key: 'describedAll' },
       )
     } catch (caught) {
-      setError(asErrorMessage(caught))
+      setError(asErrorMessage(caught, ui.fallbackError))
     } finally {
-      setBusyLabel('')
+      setBusyState('')
     }
   }
 
@@ -288,23 +552,23 @@ function App() {
       return
     }
     if (!exportSettings.outputDir) {
-      setError('Choose an output directory before exporting.')
+      setError(ui.chooseOutputDirFirst)
       return
     }
 
     setError('')
-    setBusyLabel('Exporting project...')
+    setBusyState('exporting')
     try {
       const result = await exportProject(current, exportSettings)
       replaceProject(result.project, {
         push: true,
         selection: selectedIds,
       })
-      setStatus(buildExportStatus(result))
+      setStatus({ key: 'exported', result })
     } catch (caught) {
-      setError(asErrorMessage(caught))
+      setError(asErrorMessage(caught, ui.fallbackError))
     } finally {
-      setBusyLabel('')
+      setBusyState('')
     }
   }
 
@@ -316,7 +580,7 @@ function App() {
     const next = history.entries[nextIndex]
     replaceProject(structuredClone(next), { selection: selectedIds })
     setHistory((current) => ({ ...current, index: nextIndex }))
-    setStatus('Undid the last project edit.')
+    setStatus({ key: 'undo' })
   }
 
   const handleRedo = () => {
@@ -327,7 +591,7 @@ function App() {
     const next = history.entries[nextIndex]
     replaceProject(structuredClone(next), { selection: selectedIds })
     setHistory((current) => ({ ...current, index: nextIndex }))
-    setStatus('Redid the next project edit.')
+    setStatus({ key: 'redo' })
   }
 
   const deleteSelection = () => {
@@ -345,7 +609,7 @@ function App() {
       { push: true, selection: nextSelection ? [] : [] },
     )
     setSelectedIds([])
-    setStatus(`Deleted ${selectedIds.length} sprite box(es).`)
+    setStatus({ key: 'deleted', count: selectedIds.length })
   }
 
   const reorderSprite = (direction: -1 | 1) => {
@@ -372,7 +636,7 @@ function App() {
       },
       { push: true, selection: [targetId] },
     )
-    setStatus(direction < 0 ? 'Moved sprite up.' : 'Moved sprite down.')
+    setStatus({ key: direction < 0 ? 'moveUp' : 'moveDown' })
   }
 
   const beginMove = (spriteId: string, additive: boolean) => {
@@ -570,7 +834,7 @@ function App() {
           selection: [],
         })
         setInteraction(null)
-        setStatus('Ignored a tiny draft box. Drag a bit more to create one.')
+        setStatus({ key: 'ignoredTinyDraft' })
         return
       }
       const finalized = structuredClone(current)
@@ -587,7 +851,7 @@ function App() {
       })
       setInteraction(null)
       setTool('select')
-      setStatus('Created a new sprite box.')
+      setStatus({ key: 'createdBox' })
       return
     }
 
@@ -600,9 +864,7 @@ function App() {
     })
     setInteraction(null)
     setStatus(
-      currentInteraction.type === 'move'
-        ? 'Moved selected sprite box(es).'
-        : 'Resized sprite box.',
+      currentInteraction.type === 'move' ? { key: 'movedBoxes' } : { key: 'resizedBox' },
     )
   })
 
@@ -637,48 +899,66 @@ function App() {
       <header className="topbar">
         <div>
           <p className="eyebrow">SpriteSplit</p>
-          <h1>AI sprite cleanup workbench</h1>
-          <p className="subtitle">
-            Detect irregularly placed sprites, correct boxes visually, add AI
-            descriptions, and export metadata or normalized crops.
-          </p>
+          <h1>{ui.heroTitle}</h1>
+          <p className="subtitle">{ui.heroSubtitle}</p>
         </div>
-        <div className="topbar-actions">
-          <button className="primary" onClick={importImage} type="button">
-            Import PNG
-          </button>
-          <button
-            disabled={!project || !!busyLabel}
-            onClick={rerunDetection}
-            type="button"
-          >
-            Re-run Detection
-          </button>
-          <button
-            disabled={history.index <= 0 || !!busyLabel}
-            onClick={handleUndo}
-            type="button"
-          >
-            Undo
-          </button>
-          <button
-            disabled={history.index >= history.entries.length - 1 || !!busyLabel}
-            onClick={handleRedo}
-            type="button"
-          >
-            Redo
-          </button>
+        <div className="topbar-meta">
+          <div className="language-switch" role="group" aria-label={ui.languageLabel}>
+            <span>{ui.languageLabel}</span>
+            <div className="segmented">
+              <button
+                className={language === 'en' ? 'active' : ''}
+                onClick={() => setLanguage('en')}
+                type="button"
+              >
+                {ui.languageEnglish}
+              </button>
+              <button
+                className={language === 'zh' ? 'active' : ''}
+                onClick={() => setLanguage('zh')}
+                type="button"
+              >
+                {ui.languageChinese}
+              </button>
+            </div>
+          </div>
+          <div className="topbar-actions">
+            <button className="primary" onClick={importImage} type="button">
+              {ui.importPng}
+            </button>
+            <button
+              disabled={!project || !!busyLabel}
+              onClick={rerunDetection}
+              type="button"
+            >
+              {ui.rerunDetection}
+            </button>
+            <button
+              disabled={history.index <= 0 || !!busyLabel}
+              onClick={handleUndo}
+              type="button"
+            >
+              {ui.undo}
+            </button>
+            <button
+              disabled={history.index >= history.entries.length - 1 || !!busyLabel}
+              onClick={handleRedo}
+              type="button"
+            >
+              {ui.redo}
+            </button>
+          </div>
         </div>
       </header>
 
       <section className="status-strip">
         <div>
-          <strong>Status:</strong> {busyLabel || status}
+          <strong>{ui.statusLabel}</strong> {busyLabel || statusLabel}
         </div>
         {project ? (
           <div className="status-meta">
             <span>{project.sourceImageName}</span>
-            <span>{project.sprites.length} sprites</span>
+            <span>{ui.spritesCount(project.sprites.length)}</span>
             <span>{project.imageSize.width}×{project.imageSize.height}</span>
           </div>
         ) : null}
@@ -690,11 +970,11 @@ function App() {
         <aside className="control-panel">
           <section className="panel-card">
             <div className="panel-header">
-              <h2>Detection</h2>
-              <p>Alpha thresholding and connected-component grouping.</p>
+              <h2>{ui.detectionTitle}</h2>
+              <p>{ui.detectionDescription}</p>
             </div>
             <label>
-              <span>Alpha threshold</span>
+              <span>{ui.alphaThreshold}</span>
               <input
                 disabled={!project}
                 max={255}
@@ -717,7 +997,7 @@ function App() {
               <strong>{project?.detectionSettings.alphaThreshold ?? 10}</strong>
             </label>
             <label>
-              <span>Minimum region area</span>
+              <span>{ui.minRegionArea}</span>
               <input
                 disabled={!project}
                 min={1}
@@ -739,7 +1019,7 @@ function App() {
               />
             </label>
             <label>
-              <span>Sort mode</span>
+              <span>{ui.sortMode}</span>
               <select
                 disabled={!project}
                 value={
@@ -760,18 +1040,18 @@ function App() {
                 }
               >
                 <option value="top-to-bottom-left-to-right">
-                  Top to bottom, then left to right
+                  {ui.sortTopToBottom}
                 </option>
                 <option value="left-to-right-top-to-bottom">
-                  Left to right, then top to bottom
+                  {ui.sortLeftToRight}
                 </option>
               </select>
             </label>
             <label className="prompt-field">
-              <span>Original generation prompt</span>
+              <span>{ui.originalPrompt}</span>
               <textarea
                 disabled={!project}
-                placeholder="Paste the prompt you used to generate this sheet. It will be saved with the project and can guide AI naming."
+                placeholder={ui.originalPromptPlaceholder}
                 rows={5}
                 value={project?.prompt ?? ''}
                 onChange={(event) =>
@@ -789,8 +1069,8 @@ function App() {
 
           <section className="panel-card">
             <div className="panel-header">
-              <h2>Canvas Tools</h2>
-              <p>Choose a tool, then edit boxes directly on the image.</p>
+              <h2>{ui.canvasToolsTitle}</h2>
+              <p>{ui.canvasToolsDescription}</p>
             </div>
             <div className="segmented">
               <button
@@ -798,18 +1078,18 @@ function App() {
                 onClick={() => setTool('select')}
                 type="button"
               >
-                Select
+                {ui.selectTool}
               </button>
               <button
                 className={tool === 'create' ? 'active' : ''}
                 onClick={() => setTool('create')}
                 type="button"
               >
-                Create Box
+                {ui.createBox}
               </button>
             </div>
             <label>
-              <span>Zoom</span>
+              <span>{ui.zoom}</span>
               <input
                 max={4}
                 min={0.25}
@@ -826,21 +1106,21 @@ function App() {
                 onClick={deleteSelection}
                 type="button"
               >
-                Delete
+                {ui.delete}
               </button>
               <button
                 disabled={selectedIds.length !== 1}
                 onClick={() => reorderSprite(-1)}
                 type="button"
               >
-                Move Up
+                {ui.moveUp}
               </button>
               <button
                 disabled={selectedIds.length !== 1}
                 onClick={() => reorderSprite(1)}
                 type="button"
               >
-                Move Down
+                {ui.moveDown}
               </button>
             </div>
           </section>
@@ -883,11 +1163,11 @@ function App() {
                       }}
                       type="button"
                     >
-                      <span className="sprite-index">{sprite.index}</span>
+                        <span className="sprite-index">{sprite.index}</span>
                       {selected ? (
                         <>
                           <button
-                            aria-label="Resize north west"
+                            aria-label={ui.resizeNorthWest}
                             className="resize-handle nw"
                             onPointerDown={(event) =>
                               beginResize(event, sprite.id, 'nw')
@@ -895,7 +1175,7 @@ function App() {
                             type="button"
                           />
                           <button
-                            aria-label="Resize north east"
+                            aria-label={ui.resizeNorthEast}
                             className="resize-handle ne"
                             onPointerDown={(event) =>
                               beginResize(event, sprite.id, 'ne')
@@ -903,7 +1183,7 @@ function App() {
                             type="button"
                           />
                           <button
-                            aria-label="Resize south west"
+                            aria-label={ui.resizeSouthWest}
                             className="resize-handle sw"
                             onPointerDown={(event) =>
                               beginResize(event, sprite.id, 'sw')
@@ -911,7 +1191,7 @@ function App() {
                             type="button"
                           />
                           <button
-                            aria-label="Resize south east"
+                            aria-label={ui.resizeSouthEast}
                             className="resize-handle se"
                             onPointerDown={(event) =>
                               beginResize(event, sprite.id, 'se')
@@ -926,13 +1206,10 @@ function App() {
               </div>
             ) : (
               <div className="empty-stage">
-                <h2>Drop in a sprite sheet to start</h2>
-                <p>
-                  SpriteSplit is tuned for transparent PNG sprite sheets from AI
-                  image generation workflows.
-                </p>
+                <h2>{ui.emptyStageTitle}</h2>
+                <p>{ui.emptyStageDescription}</p>
                 <button className="primary" onClick={importImage} type="button">
-                  Select PNG
+                  {ui.selectPng}
                 </button>
               </div>
             )}
@@ -947,37 +1224,34 @@ function App() {
                 onClick={() => setSidebarTab('inspect')}
                 type="button"
               >
-                Inspect
+                {ui.inspect}
               </button>
               <button
                 className={sidebarTab === 'ai' ? 'active' : ''}
                 onClick={() => setSidebarTab('ai')}
                 type="button"
               >
-                AI
+                {ui.ai}
               </button>
               <button
                 className={sidebarTab === 'export' ? 'active' : ''}
                 onClick={() => setSidebarTab('export')}
                 type="button"
               >
-                Export
+                {ui.export}
               </button>
             </div>
 
             {sidebarTab === 'inspect' ? (
               <>
                 <div className="panel-header">
-                  <h2>Sprite Inspector</h2>
-                  <p>
-                    Select a single sprite to edit fields, or shift-click for
-                    multi-select on the canvas or list.
-                  </p>
+                  <h2>{ui.inspectorTitle}</h2>
+                  <p>{ui.inspectorDescription}</p>
                 </div>
                 {activeSprite ? (
                   <div className="inspector-fields">
                     <label>
-                      <span>Name</span>
+                      <span>{ui.name}</span>
                       <input
                         type="text"
                         value={activeSprite.name}
@@ -992,7 +1266,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>Group</span>
+                      <span>{ui.group}</span>
                       <input
                         type="text"
                         value={activeSprite.group}
@@ -1007,7 +1281,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>Tags</span>
+                      <span>{ui.tags}</span>
                       <input
                         type="text"
                         value={activeSprite.tags.join(', ')}
@@ -1022,7 +1296,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>Description</span>
+                      <span>{ui.description}</span>
                       <textarea
                         rows={4}
                         value={activeSprite.description}
@@ -1037,7 +1311,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      <span>AI Description</span>
+                      <span>{ui.aiDescription}</span>
                       <textarea
                         rows={4}
                         value={activeSprite.aiDescription}
@@ -1054,8 +1328,8 @@ function App() {
                 ) : (
                   <div className="empty-message">
                     {selectedIds.length > 1
-                      ? `${selectedIds.length} sprites selected. Use the canvas tools or the list below.`
-                      : 'Select a sprite box to inspect or edit it.'}
+                      ? ui.selectedSpritesMessage(selectedIds.length)
+                      : ui.selectSpriteHint}
                   </div>
                 )}
 
@@ -1079,8 +1353,12 @@ function App() {
                         <span className="sprite-row-copy">
                           <strong>{sprite.name || `sprite_${sprite.index}`}</strong>
                           <small>
-                            {sprite.bbox.width}×{sprite.bbox.height} at{' '}
-                            {sprite.bbox.x}, {sprite.bbox.y}
+                            {ui.spriteLocation(
+                              sprite.bbox.width,
+                              sprite.bbox.height,
+                              sprite.bbox.x,
+                              sprite.bbox.y,
+                            )}
                           </small>
                         </span>
                       </button>
@@ -1093,11 +1371,8 @@ function App() {
             {sidebarTab === 'ai' ? (
               <>
                 <div className="panel-header">
-                  <h2>AI Descriptions</h2>
-                  <p>
-                    Use an OpenAI-compatible vision endpoint. Descriptions are
-                    cached by image hash, bbox, prompt, and model settings.
-                  </p>
+                  <h2>{ui.aiTitle}</h2>
+                  <p>{ui.aiDescriptionText}</p>
                 </div>
                 <label className="inline-toggle">
                   <input
@@ -1110,10 +1385,10 @@ function App() {
                     }
                     type="checkbox"
                   />
-                  <span>Enable AI provider</span>
+                  <span>{ui.enableAiProvider}</span>
                 </label>
                 <label>
-                  <span>Base URL</span>
+                  <span>{ui.baseUrl}</span>
                   <input
                     type="text"
                     value={providerConfig.baseUrl}
@@ -1126,7 +1401,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>API key</span>
+                  <span>{ui.apiKey}</span>
                   <input
                     type="password"
                     value={providerConfig.apiKey}
@@ -1139,7 +1414,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>Model</span>
+                  <span>{ui.model}</span>
                   <input
                     type="text"
                     value={providerConfig.model}
@@ -1152,7 +1427,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>Sheet prompt</span>
+                  <span>{ui.sheetPrompt}</span>
                   <textarea
                     rows={4}
                     value={providerConfig.sheetPrompt}
@@ -1165,7 +1440,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span>Sprite prompt</span>
+                  <span>{ui.spritePrompt}</span>
                   <textarea
                     rows={4}
                     value={providerConfig.spritePrompt}
@@ -1183,19 +1458,19 @@ function App() {
                     onClick={() => runDescriptionGeneration(false)}
                     type="button"
                   >
-                    Describe All
+                    {ui.describeAll}
                   </button>
                   <button
                     disabled={!project || selectedIds.length === 0 || !!busyLabel}
                     onClick={() => runDescriptionGeneration(true)}
                     type="button"
                   >
-                    Describe Selected
+                    {ui.describeSelected}
                   </button>
                 </div>
                 {project?.sheetContext ? (
                   <div className="context-box">
-                    <strong>Sheet context</strong>
+                    <strong>{ui.sheetContext}</strong>
                     <p>{project.sheetContext}</p>
                   </div>
                 ) : null}
@@ -1205,18 +1480,15 @@ function App() {
             {sidebarTab === 'export' ? (
               <>
                 <div className="panel-header">
-                  <h2>Export</h2>
-                  <p>
-                    Export metadata only, or metadata plus normalized crops for
-                    downstream game workflows.
-                  </p>
+                  <h2>{ui.exportTitle}</h2>
+                  <p>{ui.exportDescription}</p>
                 </div>
                 <label>
-                  <span>Output directory</span>
+                  <span>{ui.outputDirectory}</span>
                   <div className="path-row">
                     <input readOnly type="text" value={exportSettings.outputDir} />
                     <button onClick={chooseOutputDirectory} type="button">
-                      Browse
+                      {ui.browse}
                     </button>
                   </div>
                 </label>
@@ -1231,7 +1503,7 @@ function App() {
                     }
                     type="checkbox"
                   />
-                  <span>Export cropped PNG sprites</span>
+                  <span>{ui.exportCrops}</span>
                 </label>
                 <label className="inline-toggle">
                   <input
@@ -1244,11 +1516,11 @@ function App() {
                     }
                     type="checkbox"
                   />
-                  <span>Center crops on a uniform canvas</span>
+                  <span>{ui.normalizeCanvas}</span>
                 </label>
                 <div className="two-col">
                   <label>
-                    <span>Canvas width</span>
+                    <span>{ui.canvasWidth}</span>
                     <input
                       min={0}
                       type="number"
@@ -1262,7 +1534,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    <span>Canvas height</span>
+                    <span>{ui.canvasHeight}</span>
                     <input
                       min={0}
                       type="number"
@@ -1287,7 +1559,7 @@ function App() {
                     }
                     type="checkbox"
                   />
-                  <span>Write JSON manifest</span>
+                  <span>{ui.writeJson}</span>
                 </label>
                 <label className="inline-toggle">
                   <input
@@ -1300,7 +1572,7 @@ function App() {
                     }
                     type="checkbox"
                   />
-                  <span>Write CSV summary</span>
+                  <span>{ui.writeCsv}</span>
                 </label>
                 <button
                   className="primary"
@@ -1308,7 +1580,7 @@ function App() {
                   onClick={runExport}
                   type="button"
                 >
-                  Export Project
+                  {ui.exportProject}
                 </button>
               </>
             ) : null}
@@ -1317,8 +1589,8 @@ function App() {
           {project?.warnings?.length ? (
             <section className="panel-card warnings-card">
               <div className="panel-header">
-                <h2>Warnings</h2>
-                <p>Non-blocking issues and skipped steps are recorded here.</p>
+                <h2>{ui.warningsTitle}</h2>
+                <p>{ui.warningsDescription}</p>
               </div>
               <ul className="warning-list">
                 {project.warnings.map((warning) => (
@@ -1384,18 +1656,24 @@ function createSpriteRecord(
   }
 }
 
-function buildExportStatus(result: ExportResult) {
+function buildExportStatus(
+  result: ExportResult,
+  ui: (typeof UI_TEXT)[Language],
+) {
   const parts = []
   if (result.manifestPath) {
-    parts.push('JSON manifest')
+    parts.push(ui.exportJsonManifest)
   }
   if (result.csvPath) {
-    parts.push('CSV summary')
+    parts.push(ui.exportCsvSummary)
   }
   if (result.exportedSprites.length) {
-    parts.push(`${result.exportedSprites.length} crop(s)`)
+    parts.push(ui.exportCropsCount(result.exportedSprites.length))
   }
-  return `Exported ${parts.join(', ')} to ${result.manifestPath || result.csvPath || result.cropDirectory}.`
+  return ui.exportStatus(
+    parts.join(', '),
+    result.manifestPath || result.csvPath || result.cropDirectory,
+  )
 }
 
 function updateSpriteField<K extends keyof SpriteRecord>(
@@ -1442,14 +1720,72 @@ function deriveDefaultExportDir(imagePath: string) {
   return `${normalized.slice(0, lastSlash)}\\spritesplit-export`
 }
 
-function asErrorMessage(error: unknown) {
+function asErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'string') {
     return error
   }
   if (error && typeof error === 'object' && 'message' in error) {
     return String(error.message)
   }
-  return 'Something went wrong.'
+  return fallback
+}
+
+function formatBusyLabel(
+  busyState: BusyState,
+  ui: (typeof UI_TEXT)[Language],
+) {
+  switch (busyState) {
+    case 'analyzing':
+      return ui.busyAnalyzing
+    case 'rerunning':
+      return ui.busyRerunning
+    case 'describing':
+      return ui.busyDescribing
+    case 'exporting':
+      return ui.busyExporting
+    default:
+      return ''
+  }
+}
+
+function formatStatus(
+  status: StatusState,
+  ui: (typeof UI_TEXT)[Language],
+) {
+  switch (status.key) {
+    case 'idle':
+      return ui.statusIdle
+    case 'runningDetection':
+      return ui.statusRunningDetection
+    case 'detected':
+      return ui.statusDetected(status.count)
+    case 'refreshed':
+      return ui.statusRefreshed(status.alphaThreshold, status.minArea)
+    case 'describedSelected':
+      return ui.statusDescribedSelected(status.count)
+    case 'describedAll':
+      return ui.statusDescribedAll
+    case 'undo':
+      return ui.statusUndo
+    case 'redo':
+      return ui.statusRedo
+    case 'deleted':
+      return ui.statusDeleted(status.count)
+    case 'moveUp':
+      return ui.statusMoveUp
+    case 'moveDown':
+      return ui.statusMoveDown
+    case 'ignoredTinyDraft':
+      return ui.statusIgnoredTinyDraft
+    case 'createdBox':
+      return ui.statusCreatedBox
+    case 'movedBoxes':
+      return ui.statusMovedBoxes
+    case 'resizedBox':
+      return ui.statusResizedBox
+    case 'exported':
+      return buildExportStatus(status.result, ui)
+  }
 }
 
 function roundToTwo(value: number) {
