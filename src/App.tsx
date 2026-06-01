@@ -30,6 +30,10 @@ type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se'
 type Language = 'en' | 'zh'
 type BusyState = '' | 'analyzing' | 'rerunning' | 'describing' | 'exporting'
 
+const ZOOM_MIN = 0.25
+const ZOOM_MAX = 4
+const ZOOM_STEP = 0.05
+
 type StatusState =
   | { key: 'idle' }
   | { key: 'runningDetection' }
@@ -131,6 +135,10 @@ const UI_TEXT = {
     selectTool: 'Select',
     createBox: 'Create Box',
     zoom: 'Zoom',
+    fitToView: 'Fit',
+    actualSize: '100%',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
     delete: 'Delete',
     moveUp: 'Move Up',
     moveDown: 'Move Down',
@@ -246,6 +254,10 @@ const UI_TEXT = {
     selectTool: '选择',
     createBox: '创建框选',
     zoom: '缩放',
+    fitToView: '适应窗口',
+    actualSize: '100%',
+    zoomIn: '放大',
+    zoomOut: '缩小',
     delete: '删除',
     moveUp: '上移',
     moveDown: '下移',
@@ -356,8 +368,10 @@ function App() {
   const [status, setStatus] = useState<StatusState>({ key: 'idle' })
   const [error, setError] = useState('')
   const [busyState, setBusyState] = useState<BusyState>('')
+  const [fitRequestKey, setFitRequestKey] = useState(0)
 
   const stageRef = useRef<HTMLDivElement | null>(null)
+  const stageFrameRef = useRef<HTMLDivElement | null>(null)
   const projectRef = useRef<ProjectDocument | null>(null)
   const draftIdRef = useRef(1)
   const ui = UI_TEXT[language]
@@ -381,6 +395,41 @@ function App() {
 
   const stageWidth = project ? project.imageSize.width * zoom : 0
   const stageHeight = project ? project.imageSize.height * zoom : 0
+
+  const fitStageToViewport = useEffectEvent(() => {
+    const current = projectRef.current
+    const frame = stageFrameRef.current
+    if (!current || !frame) {
+      return
+    }
+    setZoom(calculateFitZoom(current.imageSize.width, current.imageSize.height, frame))
+  })
+
+  const updateZoom = (nextZoom: number) => {
+    setZoom(clampZoom(nextZoom))
+  }
+
+  const zoomIn = () => {
+    updateZoom(zoom + ZOOM_STEP)
+  }
+
+  const zoomOut = () => {
+    updateZoom(zoom - ZOOM_STEP)
+  }
+
+  const resetZoom = () => {
+    updateZoom(1)
+  }
+
+  useEffect(() => {
+    if (!project || fitRequestKey === 0) {
+      return
+    }
+    const frame = window.requestAnimationFrame(() => {
+      fitStageToViewport()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [fitRequestKey, fitStageToViewport, project])
 
   const pushHistory = (next: ProjectDocument) => {
     setHistory((current) => {
@@ -465,6 +514,7 @@ function App() {
         selection: nextProject.sprites[0] ? [nextProject.sprites[0].id] : [],
       })
       setPreviewUrl(filePathToUrl(chosen))
+      setFitRequestKey((current) => current + 1)
       setExportSettings((current) => ({
         ...current,
         outputDir: current.outputDir || deriveDefaultExportDir(chosen),
@@ -496,6 +546,7 @@ function App() {
         selection: nextProject.sprites[0] ? [nextProject.sprites[0].id] : [],
       })
       setPreviewUrl(filePathToUrl(current.sourceImagePath))
+      setFitRequestKey((currentKey) => currentKey + 1)
       setStatus({
         key: 'refreshed',
         alphaThreshold: current.detectionSettings.alphaThreshold,
@@ -919,18 +970,23 @@ function App() {
       <main className="app-main">
         <ToolRail
           deleteSelection={deleteSelection}
+          fitStageToViewport={fitStageToViewport}
           project={project}
           reorderSprite={reorderSprite}
+          resetZoom={resetZoom}
           selectedIds={selectedIds}
           setTool={setTool}
-          setZoom={setZoom}
+          setZoom={updateZoom}
           tool={tool}
           ui={ui}
           updateProject={updateProject}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
           zoom={zoom}
         />
 
         <StageWorkspace
+          fitStageToViewport={fitStageToViewport}
           beginDragSelection={beginDragSelection}
           beginMove={beginMove}
           beginResize={beginResize}
@@ -938,15 +994,19 @@ function App() {
           importImage={importImage}
           previewUrl={previewUrl}
           project={project}
+          resetZoom={resetZoom}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
           setTool={setTool}
+          stageFrameRef={stageFrameRef}
           stageHeight={stageHeight}
           stageRef={stageRef}
           stageWidth={stageWidth}
           statusLabel={statusLabel}
           tool={tool}
           ui={ui}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
           zoom={zoom}
         />
 
@@ -1083,19 +1143,25 @@ function AppToolbar({
 
 function ToolRail({
   deleteSelection,
+  fitStageToViewport,
   project,
   reorderSprite,
+  resetZoom,
   selectedIds,
   setTool,
   setZoom,
   tool,
   ui,
   updateProject,
+  zoomIn,
+  zoomOut,
   zoom,
 }: {
   deleteSelection: () => void
+  fitStageToViewport: () => void
   project: ProjectDocument | null
   reorderSprite: (direction: -1 | 1) => void
+  resetZoom: () => void
   selectedIds: string[]
   setTool: (tool: ToolMode) => void
   setZoom: (zoom: number) => void
@@ -1105,6 +1171,8 @@ function ToolRail({
     updater: (draft: ProjectDocument) => ProjectDocument,
     options?: { push?: boolean; selection?: string[] },
   ) => void
+  zoomIn: () => void
+  zoomOut: () => void
   zoom: number
 }) {
   return (
@@ -1238,15 +1306,30 @@ function ToolRail({
         <label>
           <span>{ui.zoom}</span>
           <input
-            max={4}
-            min={0.25}
-            step={0.05}
+            max={ZOOM_MAX}
+            min={ZOOM_MIN}
+            step={ZOOM_STEP}
             type="range"
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
           />
           <strong>{Math.round(zoom * 100)}%</strong>
         </label>
+
+        <div className="tool-grid compact-grid">
+          <button disabled={!project} onClick={zoomOut} type="button">
+            -
+          </button>
+          <button disabled={!project} onClick={zoomIn} type="button">
+            +
+          </button>
+          <button disabled={!project} onClick={resetZoom} type="button">
+            {ui.actualSize}
+          </button>
+          <button disabled={!project} onClick={fitStageToViewport} type="button">
+            {ui.fitToView}
+          </button>
+        </div>
 
         <div className="tool-grid">
           <button
@@ -1277,6 +1360,7 @@ function ToolRail({
 }
 
 function StageWorkspace({
+  fitStageToViewport,
   beginDragSelection,
   beginMove,
   beginResize,
@@ -1284,17 +1368,22 @@ function StageWorkspace({
   importImage,
   previewUrl,
   project,
+  resetZoom,
   selectedIds,
   setSelectedIds,
   setTool,
+  stageFrameRef,
   stageHeight,
   stageRef,
   stageWidth,
   statusLabel,
   tool,
   ui,
+  zoomIn,
+  zoomOut,
   zoom,
 }: {
+  fitStageToViewport: () => void
   beginDragSelection: (
     event: React.PointerEvent<HTMLButtonElement>,
     spriteId: string,
@@ -1309,15 +1398,19 @@ function StageWorkspace({
   importImage: () => void
   previewUrl: string
   project: ProjectDocument | null
+  resetZoom: () => void
   selectedIds: string[]
   setSelectedIds: (value: string[]) => void
   setTool: (tool: ToolMode) => void
+  stageFrameRef: React.RefObject<HTMLDivElement | null>
   stageHeight: number
   stageRef: React.RefObject<HTMLDivElement | null>
   stageWidth: number
   statusLabel: string
   tool: ToolMode
   ui: (typeof UI_TEXT)[Language]
+  zoomIn: () => void
+  zoomOut: () => void
   zoom: number
 }) {
   return (
@@ -1333,9 +1426,23 @@ function StageWorkspace({
           <span className="meta-pill">{ui.selectionCount(selectedIds.length)}</span>
           <span className="meta-pill">{ui.zoom} {Math.round(zoom * 100)}%</span>
         </div>
+        <div className="workspace-zoom-controls">
+          <button disabled={!project} onClick={zoomOut} type="button">
+            {ui.zoomOut}
+          </button>
+          <button disabled={!project} onClick={zoomIn} type="button">
+            {ui.zoomIn}
+          </button>
+          <button disabled={!project} onClick={resetZoom} type="button">
+            {ui.actualSize}
+          </button>
+          <button disabled={!project} onClick={fitStageToViewport} type="button">
+            {ui.fitToView}
+          </button>
+        </div>
       </div>
 
-      <div className="stage-frame">
+      <div className="stage-frame" ref={stageFrameRef}>
         {project && previewUrl ? (
           <div
             className={`stage ${tool === 'create' ? 'create-mode' : ''}`}
@@ -2042,6 +2149,22 @@ function formatStatus(
 
 function roundToTwo(value: number) {
   return Math.round(value * 100) / 100
+}
+
+function clampZoom(value: number) {
+  return roundToTwo(clampNumber(value, ZOOM_MIN, ZOOM_MAX))
+}
+
+function calculateFitZoom(
+  imageWidth: number,
+  imageHeight: number,
+  frame: HTMLDivElement,
+) {
+  const availableWidth = Math.max(frame.clientWidth - 36, 1)
+  const availableHeight = Math.max(frame.clientHeight - 36, 1)
+  const widthZoom = availableWidth / imageWidth
+  const heightZoom = availableHeight / imageHeight
+  return clampZoom(Math.min(widthZoom, heightZoom))
 }
 
 function clampNumber(value: number, min: number, max: number) {

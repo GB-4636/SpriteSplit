@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tauri::path::BaseDirectory;
+use tauri::Manager;
 
 #[tauri::command]
 pub async fn analyze_image(app: tauri::AppHandle, input: Value) -> Result<Value, String> {
